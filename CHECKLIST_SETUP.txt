@@ -1,0 +1,248 @@
+CHECKLIST DE SETUP - AGENDA UFC
+═══════════════════════════════════════════════════════════════
+
+Leonardo MONTEIRO SOUZA - Matrícula: 603973
+Engenharia de Computação - Semestre 2026.1
+Data: 23/03/2026
+
+═══════════════════════════════════════════════════════════════
+FASE 1: PREPARAÇÃO
+═══════════════════════════════════════════════════════════════
+
+□ Ter Node.js 18+ instalado
+  Verificar: node --version
+
+□ Ter pnpm instalado
+  Se não tiver: npm install -g pnpm
+
+□ Ter Supabase account (gratuita)
+  Site: supabase.com
+
+═══════════════════════════════════════════════════════════════
+FASE 2: CONFIGURAÇÃO SUPABASE
+═══════════════════════════════════════════════════════════════
+
+□ Criar novo projeto no Supabase
+
+□ Copiar URL do projeto
+  Supabase → Settings → API → Project URL
+
+□ Copiar chave anôn
+  Supabase → Settings → API → anon public
+
+□ Criar .env.local na raiz do projeto
+
+□ Preencher .env.local:
+  NEXT_PUBLIC_SUPABASE_URL=<URL copiada>
+  NEXT_PUBLIC_SUPABASE_ANON_KEY=<chave copiada>
+
+═══════════════════════════════════════════════════════════════
+FASE 3: BANCO DE DADOS
+═══════════════════════════════════════════════════════════════
+
+□ Acessar SQL Editor no Supabase
+  Supabase → SQL Editor
+
+□ Copiar conteúdo do arquivo:
+  /scripts/001_create_tables.sql
+
+□ Colar na query do Supabase e executar (RUN)
+  ✓ Será criado:
+    - Tabela: disciplinas (com suas 6 disciplinas)
+    - Tabela: horarios (com seus 10 horários)
+    - Tabela: tarefas (vazia, pronta para usar)
+    - Tabela: anotacoes (vazia)
+    - Tabela: revisoes (vazia)
+
+□ Copiar conteúdo: /scripts/002_disable_rls.sql
+  Colar em NOVA query e executar
+
+□ Copiar conteúdo: /scripts/003_add_prioridade.sql
+  Colar em NOVA query e executar
+
+□ Verificar dados no Supabase:
+  Supabase → Table Editor
+  Conferir:
+    - 6 disciplinas em disciplinas table
+    - 10 horários em horarios table
+
+═══════════════════════════════════════════════════════════════
+FASE 4: INSTALAR DEPENDÊNCIAS
+═══════════════════════════════════════════════════════════════
+
+□ Abrir terminal na raiz do projeto
+
+□ Executar:
+  pnpm install
+
+□ Esperar terminar (pode levar 2-3 minutos)
+
+□ Confirmar sem erros ao fim
+
+═══════════════════════════════════════════════════════════════
+FASE 5: RODAR LOCALMENTE
+═══════════════════════════════════════════════════════════════
+
+□ Executar:
+  pnpm dev
+
+□ Esperar até aparecer:
+  "✓ Ready in XXXX ms"
+
+□ Abrir navegador:
+  http://localhost:3000
+
+□ Verificar:
+  ✓ Página carrega sem erros
+  ✓ 6 disciplinas aparecem na aba "Início"
+  ✓ Grade de horários mostra suas aulas
+  ✓ Todas as abas funcionam (6 abas total)
+
+═══════════════════════════════════════════════════════════════
+FASE 6: TESTAR FUNCIONALIDADES
+═══════════════════════════════════════════════════════════════
+
+□ ABA "INÍCIO"
+  ✓ Ver suas 6 disciplinas
+  ✓ Ver próximas tarefas (vazio no início)
+  ✓ Ver aulas de hoje
+
+□ ABA "CALENDÁRIO"
+  ✓ Calendário aparece
+  ✓ Navegação entre meses funciona
+
+□ ABA "REVISÃO"
+  ✓ Botão de criar revisão aparece
+  ✓ Filtros de status funcionam
+
+□ ABA "HORÁRIOS"
+  ✓ Grade semanal visível
+  ✓ 10 aulas aparecem nos horários corretos
+
+□ ABA "TAREFAS"
+  ✓ Botão de nova tarefa funciona
+  ✓ Criar tarefa de teste
+
+□ ABA "ANOTAÇÕES"
+  ✓ Botão de nova anotação funciona
+  ✓ Criar anotação de teste
+
+═══════════════════════════════════════════════════════════════
+FASE 7: VERIFICAR DADOS NO BANCO
+═══════════════════════════════════════════════════════════════
+
+□ Voltar ao Supabase → Table Editor
+
+□ Confirmar tabelas:
+  Table: disciplinas
+    └─ 6 linhas (CB0704, CD0381, CK0211, CE0900, TL0015, TI0139)
+  
+  Table: horarios
+    └─ 10 linhas (todos os horários mapeados)
+  
+  Table: tarefas
+    └─ Sua tarefa de teste inserida
+
+  Table: anotacoes
+    └─ Sua anotação de teste inserida
+
+═══════════════════════════════════════════════════════════════
+FASE 8: DEPLOY NO VERCEL (OPCIONAL)
+═══════════════════════════════════════════════════════════════
+
+□ Ter repositório Git configurado
+
+□ Fazer push para GitHub:
+  git add .
+  git commit -m "Setup inicial Agenda"
+  git push origin main
+
+□ Acessar vercel.com
+
+□ Conectar repositório GitHub
+
+□ Adicionar variáveis de ambiente:
+  NEXT_PUBLIC_SUPABASE_URL=<mesma do .env.local>
+  NEXT_PUBLIC_SUPABASE_ANON_KEY=<mesma do .env.local>
+
+□ Deploy automático iniciará
+
+□ Seu app estará em: https://seu-dominio.vercel.app
+
+═══════════════════════════════════════════════════════════════
+FASE 9: DOCUMENTAÇÃO
+═══════════════════════════════════════════════════════════════
+
+□ Ler COMECANDO.md - Visão geral
+
+□ Ler GUIA_SETUP.md - Setup detalhado
+
+□ Ler REFERENCIA_RAPIDA.md - Atalhos e referência
+
+□ Ler ESTRUTURA_PROJETO.md - Entender arquitetura
+
+□ Ler README.md - Documentação completa
+
+═══════════════════════════════════════════════════════════════
+FASE 10: USAR O APP
+═══════════════════════════════════════════════════════════════
+
+✓ Adicionar tarefas com datas e prioridades
+
+✓ Tomar anotações de aulas
+
+✓ Criar revisões para estudar
+
+✓ Visualizar seu semestre no calendário
+
+✓ Acompanhar seus horários
+
+✓ Marcar tarefas como concluídas
+
+═══════════════════════════════════════════════════════════════
+PROBLEMAS COMUNS
+═══════════════════════════════════════════════════════════════
+
+PROBLEMA: "Cannot find module" ao rodar pnpm dev
+SOLUÇÃO:
+  1. Delete node_modules: rm -rf node_modules
+  2. Execute novamente: pnpm install
+  3. Tente: pnpm dev
+
+PROBLEMA: Erro de conexão ao Supabase
+SOLUÇÃO:
+  1. Verificar .env.local:
+     - Sem espaços extras
+     - URLs corretas
+     - Chaves sem quebras de linha
+  2. Restartar: Ctrl+C em terminal e pnpm dev novamente
+
+PROBLEMA: Banco de dados vazio
+SOLUÇÃO:
+  1. Supabase → SQL Editor → Table Editor
+  2. Confirmar se scripts foram executados
+  3. Se vazio, executar script 001 novamente
+
+PROBLEMA: Página branca
+SOLUÇÃO:
+  1. Abrir F12 → Console
+  2. Ver mensagens de erro
+  3. Confirmar .env.local preenchido
+
+═══════════════════════════════════════════════════════════════
+CONCLUSÃO
+═══════════════════════════════════════════════════════════════
+
+□ Todas as fases concluídas ✓
+
+□ App funcionando localmente ✓
+
+□ Dados visíveis ✓
+
+□ Pronto para usar! 🎉
+
+═══════════════════════════════════════════════════════════════
+
+Bom estudo! 📚✨
+
+Para dúvidas, consulte a documentação na pasta do projeto.
