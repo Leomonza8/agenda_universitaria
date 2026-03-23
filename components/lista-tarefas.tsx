@@ -10,7 +10,7 @@ import { Textarea } from '@/components/ui/textarea'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
-import { Plus, Trash2, BookOpen } from 'lucide-react'
+import { Plus, Trash2, BookOpen, Pencil } from 'lucide-react'
 import { format } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
 
@@ -29,6 +29,13 @@ export function ListaTarefas({ tarefas, disciplinas, disciplinaFiltro, onUpdate 
   const [dataEntrega, setDataEntrega] = useState('')
   const [prioridade, setPrioridade] = useState<Prioridade>('media')
   const [loading, setLoading] = useState(false)
+
+  // edição de tarefa
+  const [editTarefa, setEditTarefa] = useState<Tarefa | null>(null)
+  const [editTitulo, setEditTitulo] = useState('')
+  const [editPrioridade, setEditPrioridade] = useState<Prioridade>('media')
+  const [editData, setEditData] = useState('')
+  const [editLoading, setEditLoading] = useState(false)
 
   // revisão rápida
   const [revisaoTarefa, setRevisaoTarefa] = useState<Tarefa | null>(null)
@@ -84,6 +91,26 @@ export function ListaTarefas({ tarefas, disciplinas, disciplinaFiltro, onUpdate 
   const deleteTarefa = async (id: string) => {
     await supabase.from('tarefas').delete().eq('id', id)
     onUpdate()
+  }
+
+  const abrirEdicao = (tarefa: Tarefa) => {
+    setEditTarefa(tarefa)
+    setEditTitulo(tarefa.titulo)
+    setEditPrioridade(tarefa.prioridade)
+    setEditData(tarefa.data_entrega ?? '')
+  }
+
+  const handleSalvarEdicao = async () => {
+    if (!editTarefa || !editTitulo.trim()) return
+    setEditLoading(true)
+    await supabase.from('tarefas').update({
+      titulo: editTitulo.trim(),
+      prioridade: editPrioridade,
+      data_entrega: editData || null,
+    }).eq('id', editTarefa.id)
+    setEditLoading(false)
+    setEditTarefa(null)
+    await onUpdate()
   }
 
   const handleCriarRevisao = async () => {
@@ -145,6 +172,15 @@ export function ListaTarefas({ tarefas, disciplinas, disciplinaFiltro, onUpdate 
         )}
       </div>
       <div className="flex items-center gap-1">
+        <Button
+          variant="ghost"
+          size="icon"
+          className="h-8 w-8 text-muted-foreground hover:text-foreground"
+          title="Editar tarefa"
+          onClick={() => abrirEdicao(tarefa)}
+        >
+          <Pencil className="h-4 w-4" />
+        </Button>
         <Button
           variant="ghost"
           size="icon"
@@ -259,6 +295,54 @@ export function ListaTarefas({ tarefas, disciplinas, disciplinaFiltro, onUpdate 
           </p>
         )}
       </CardContent>
+
+      {/* Dialog de edição */}
+      <Dialog open={!!editTarefa} onOpenChange={(open) => { if (!open) setEditTarefa(null) }}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Editar Tarefa</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 pt-2">
+            <div className="space-y-1">
+              <label className="text-sm font-medium">Nome</label>
+              <Input
+                value={editTitulo}
+                onChange={(e) => setEditTitulo(e.target.value)}
+                placeholder="Nome da tarefa"
+              />
+            </div>
+            <div className="space-y-1">
+              <label className="text-sm font-medium">Prioridade</label>
+              <Select value={editPrioridade} onValueChange={(v) => setEditPrioridade(v as Prioridade)}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="baixa">Baixa</SelectItem>
+                  <SelectItem value="media">Media</SelectItem>
+                  <SelectItem value="alta">Alta</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-1">
+              <label className="text-sm font-medium">Data de entrega</label>
+              <Input
+                type="date"
+                value={editData}
+                onChange={(e) => setEditData(e.target.value)}
+              />
+            </div>
+            <div className="flex gap-2 justify-end">
+              <Button variant="outline" onClick={() => setEditTarefa(null)}>
+                Cancelar
+              </Button>
+              <Button onClick={handleSalvarEdicao} disabled={editLoading || !editTitulo.trim()}>
+                {editLoading ? 'Salvando...' : 'Salvar'}
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
 
       {/* Dialog de revisão rápida */}
       <Dialog open={!!revisaoTarefa} onOpenChange={(open) => { if (!open) setRevisaoTarefa(null) }}>
