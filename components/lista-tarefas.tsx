@@ -9,7 +9,8 @@ import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { Plus, Trash2 } from 'lucide-react'
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
+import { Plus, Trash2, BookOpen } from 'lucide-react'
 import { format } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
 
@@ -28,6 +29,12 @@ export function ListaTarefas({ tarefas, disciplinas, disciplinaFiltro, onUpdate 
   const [dataEntrega, setDataEntrega] = useState('')
   const [prioridade, setPrioridade] = useState<Prioridade>('media')
   const [loading, setLoading] = useState(false)
+
+  // revisão rápida
+  const [revisaoTarefa, setRevisaoTarefa] = useState<Tarefa | null>(null)
+  const [revisaoData, setRevisaoData] = useState(format(new Date(), 'yyyy-MM-dd'))
+  const [revisaoTempo, setRevisaoTempo] = useState(30)
+  const [revisaoLoading, setRevisaoLoading] = useState(false)
 
   const supabase = createClient()
 
@@ -79,6 +86,19 @@ export function ListaTarefas({ tarefas, disciplinas, disciplinaFiltro, onUpdate 
     onUpdate()
   }
 
+  const handleCriarRevisao = async () => {
+    if (!revisaoTarefa) return
+    setRevisaoLoading(true)
+    await supabase.from('revisoes').insert({
+      tarefas_id: revisaoTarefa.id,
+      data_revisao: revisaoData,
+      tempo_estimado: revisaoTempo,
+      status: 'nao_iniciada',
+    })
+    setRevisaoLoading(false)
+    setRevisaoTarefa(null)
+  }
+
   const prioridadeConfig = {
     baixa: { label: 'Baixa', bg: 'bg-green-100', text: 'text-green-700' },
     media: { label: 'Média', bg: 'bg-yellow-100', text: 'text-yellow-700' },
@@ -124,14 +144,29 @@ export function ListaTarefas({ tarefas, disciplinas, disciplinaFiltro, onUpdate 
           </p>
         )}
       </div>
-      <Button
-        variant="ghost"
-        size="icon"
-        className="h-8 w-8 text-muted-foreground hover:text-destructive"
-        onClick={() => deleteTarefa(tarefa.id)}
-      >
-        <Trash2 className="h-4 w-4" />
-      </Button>
+      <div className="flex items-center gap-1">
+        <Button
+          variant="ghost"
+          size="icon"
+          className="h-8 w-8 text-muted-foreground hover:text-primary"
+          title="Criar revisão"
+          onClick={() => {
+            setRevisaoTarefa(tarefa)
+            setRevisaoData(format(new Date(), 'yyyy-MM-dd'))
+            setRevisaoTempo(30)
+          }}
+        >
+          <BookOpen className="h-4 w-4" />
+        </Button>
+        <Button
+          variant="ghost"
+          size="icon"
+          className="h-8 w-8 text-muted-foreground hover:text-destructive"
+          onClick={() => deleteTarefa(tarefa.id)}
+        >
+          <Trash2 className="h-4 w-4" />
+        </Button>
+      </div>
     </div>
     )
   }
@@ -224,6 +259,47 @@ export function ListaTarefas({ tarefas, disciplinas, disciplinaFiltro, onUpdate 
           </p>
         )}
       </CardContent>
+
+      {/* Dialog de revisão rápida */}
+      <Dialog open={!!revisaoTarefa} onOpenChange={(open) => { if (!open) setRevisaoTarefa(null) }}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Criar Revisão</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 pt-2">
+            <div className="p-3 rounded-lg bg-muted text-sm">
+              <span className="font-medium">{revisaoTarefa?.titulo}</span>
+              <span className="ml-2 text-muted-foreground">({revisaoTarefa?.disciplina?.codigo})</span>
+            </div>
+            <div className="space-y-1">
+              <label className="text-sm font-medium">Data da revisão</label>
+              <Input
+                type="date"
+                value={revisaoData}
+                onChange={(e) => setRevisaoData(e.target.value)}
+              />
+            </div>
+            <div className="space-y-1">
+              <label className="text-sm font-medium">Tempo estimado (minutos)</label>
+              <Input
+                type="number"
+                min="15"
+                step="15"
+                value={revisaoTempo}
+                onChange={(e) => setRevisaoTempo(parseInt(e.target.value) || 30)}
+              />
+            </div>
+            <div className="flex gap-2 justify-end">
+              <Button variant="outline" onClick={() => setRevisaoTarefa(null)}>
+                Cancelar
+              </Button>
+              <Button onClick={handleCriarRevisao} disabled={revisaoLoading}>
+                {revisaoLoading ? 'Criando...' : 'Criar Revisão'}
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </Card>
   )
 }

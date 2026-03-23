@@ -38,7 +38,7 @@ export function SistemaRevisao() {
       supabase
         .from('tarefas')
         .select('*, disciplina:disciplinas(*)')
-        .eq('concluida', false)
+        .order('concluida', { ascending: true })
         .order('titulo'),
     ])
 
@@ -199,7 +199,7 @@ export function SistemaRevisao() {
                 <SelectContent>
                   {tarefas.map(t => (
                     <SelectItem key={t.id} value={t.id}>
-                      {t.titulo} ({t.disciplina?.codigo})
+                      {t.concluida ? '[Concluída] ' : ''}{t.titulo} ({t.disciplina?.codigo})
                     </SelectItem>
                   ))}
                 </SelectContent>
