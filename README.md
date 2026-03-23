@@ -2,6 +2,8 @@
 
 Um aplicativo web moderno para gerenciar sua agenda acadêmica, incluindo aulas, tarefas, anotações e sistema de revisão integrado.
 
+**Configurado para:** Engenharia de Computação - UFC (Período 2026.1) | Leonardo Monteiro Souza - Matrícula 603973
+
 ## Recursos
 
 ✨ **Funcionalidades principais:**
@@ -41,7 +43,7 @@ Os scripts SQL estão em `/scripts/`:
 2. `002_disable_rls.sql` - Desabilita RLS para desenvolvimento
 3. `003_add_prioridade.sql` - Adiciona coluna de prioridade
 
-Execute estes scripts no seu banco Supabase via SQL Editor.
+Execute estes scripts no seu banco Supabase via SQL Editor na sequência numérica.
 
 ### 3. Instalação de Dependências
 
