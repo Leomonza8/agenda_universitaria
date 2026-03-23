@@ -7,8 +7,8 @@ const _geist = Geist({ subsets: ["latin"] });
 const _geistMono = Geist_Mono({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
-  title: 'Minha Agenda UFC',
-  description: 'Agenda de aulas e tarefas - Engenharia de Computação UFC',
+  title: 'Agenda - Seu Planejador Acadêmico',
+  description: 'Organize suas aulas, tarefas e revisões em um único lugar',
   generator: 'v0.app',
   icons: {
     icon: [
@@ -35,7 +35,7 @@ export default function RootLayout({
   children: React.ReactNode
 }>) {
   return (
-    <html lang="en">
+    <html lang="pt-BR">
       <body className="font-sans antialiased">
         {children}
         <Analytics />

@@ -39,6 +39,18 @@ export interface Anotacao {
   disciplina?: Disciplina
 }
 
+export type StatusRevisao = 'nao_iniciada' | 'em_progresso' | 'concluida'
+
+export interface Revisao {
+  id: string
+  tarefas_id: string
+  data_revisao: string
+  status: StatusRevisao
+  tempo_estimado: number | null
+  created_at: string
+  tarefa?: Tarefa
+}
+
 export const DIAS_SEMANA = [
   'Domingo',
   'Segunda',
@@ -48,3 +60,4 @@ export const DIAS_SEMANA = [
   'Sexta',
   'Sábado',
 ]
+
