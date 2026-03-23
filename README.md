@@ -2,7 +2,7 @@
 
 Um aplicativo web moderno para gerenciar sua agenda acadêmica, incluindo aulas, tarefas, anotações e sistema de revisão integrado.
 
-**Configurado para:** Engenharia de Computação - UFC (Período 2026.1) | Leonardo Monteiro Souza - Matrícula 603973
+**Configurado para:** Engenharia de Computação - UFC (Período 2026.1) | 
 
 ## Recursos
 
