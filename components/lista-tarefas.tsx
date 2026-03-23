@@ -53,10 +53,9 @@ export function ListaTarefas({ tarefas, disciplinas, disciplinaFiltro, onUpdate 
 
     const { error } = await supabase.from('tarefas').insert(payload)
 
-    if (error) {
-      setLoading(false)
-      return
-    }
+    setLoading(false)
+
+    if (error) return
 
     setTitulo('')
     setDescricao('')
@@ -64,8 +63,7 @@ export function ListaTarefas({ tarefas, disciplinas, disciplinaFiltro, onUpdate 
     setDataEntrega('')
     setPrioridade('media')
     setShowForm(false)
-    setLoading(false)
-    onUpdate()
+    await onUpdate()
   }
 
   const toggleConcluida = async (tarefa: Tarefa) => {
