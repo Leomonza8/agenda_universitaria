@@ -8,7 +8,7 @@ import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Input } from '@/components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogTrigger } from '@/components/ui/dialog'
 import { Clock, Plus, Trash2, Pencil } from 'lucide-react'
 import { format, parseISO } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
@@ -32,7 +32,7 @@ export function SistemaRevisao() {
   const [editFields, setEditFields] = useState({
     titulo: '',
     data_revisao: '',
-    tempo_estimado: 30,
+    tempo_estimado: null as number | null,
     status: 'nao_iniciada' as StatusRevisao,
   })
   const [editLoading, setEditLoading] = useState(false)
@@ -85,7 +85,7 @@ export function SistemaRevisao() {
     setEditFields({
       titulo: r.titulo ?? '',
       data_revisao: r.data_revisao,
-      tempo_estimado: r.tempo_estimado ?? 30,
+      tempo_estimado: r.tempo_estimado,
       status: r.status,
     })
   }
@@ -173,6 +173,9 @@ export function SistemaRevisao() {
         <DialogContent className="max-w-sm sm:max-w-md">
           <DialogHeader>
             <DialogTitle>Agendar nova revisão</DialogTitle>
+            <DialogDescription>
+              Crie uma nova sessão de revisão para uma das suas tarefas
+            </DialogDescription>
           </DialogHeader>
           <div className="space-y-3 pt-1">
             <div className="space-y-1">
@@ -285,6 +288,9 @@ export function SistemaRevisao() {
         <DialogContent className="max-w-sm sm:max-w-md">
           <DialogHeader>
             <DialogTitle>Editar revisão</DialogTitle>
+            <DialogDescription>
+              Altere os detalhes da sua sessão de revisão
+            </DialogDescription>
           </DialogHeader>
           <div className="space-y-3 pt-1">
             <div className="p-3 rounded-lg bg-muted text-sm">
@@ -311,10 +317,11 @@ export function SistemaRevisao() {
               <label className="text-sm font-medium">Tempo estimado (min)</label>
               <Input
                 type="number"
-                min="15"
+                min="0"
                 step="15"
-                value={editFields.tempo_estimado}
-                onChange={e => setEditFields({ ...editFields, tempo_estimado: parseInt(e.target.value) || 30 })}
+                value={editFields.tempo_estimado === null ? '' : editFields.tempo_estimado}
+                onChange={e => setEditFields({ ...editFields, tempo_estimado: e.target.value === '' ? null : parseInt(e.target.value) })}
+                placeholder="Deixe em branco para nenhum"
               />
             </div>
             <div className="space-y-1">

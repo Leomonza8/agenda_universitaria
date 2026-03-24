@@ -9,7 +9,7 @@ import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog'
 import { Plus, Trash2, BookOpen, Pencil } from 'lucide-react'
 import { format } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
@@ -305,6 +305,9 @@ export function ListaTarefas({ tarefas, disciplinas, disciplinaFiltro, onUpdate 
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Editar Tarefa</DialogTitle>
+            <DialogDescription>
+              Atualize o nome, prioridade e data da sua tarefa
+            </DialogDescription>
           </DialogHeader>
           <div className="space-y-4 pt-2">
             <div className="space-y-1">
@@ -353,6 +356,9 @@ export function ListaTarefas({ tarefas, disciplinas, disciplinaFiltro, onUpdate 
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Criar Revisão</DialogTitle>
+            <DialogDescription>
+              Agende uma revisão para essa tarefa, definindo data e tempo estimado
+            </DialogDescription>
           </DialogHeader>
           <div className="space-y-4 pt-2">
             <div className="p-3 rounded-lg bg-muted text-sm">
