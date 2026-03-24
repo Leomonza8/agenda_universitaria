@@ -44,6 +44,7 @@ export type StatusRevisao = 'nao_iniciada' | 'em_progresso' | 'concluida'
 export interface Revisao {
   id: string
   tarefas_id: string
+  titulo: string | null
   data_revisao: string
   status: StatusRevisao
   tempo_estimado: number | null

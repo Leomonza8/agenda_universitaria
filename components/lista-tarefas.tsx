@@ -39,6 +39,7 @@ export function ListaTarefas({ tarefas, disciplinas, disciplinaFiltro, onUpdate 
 
   // revisão rápida
   const [revisaoTarefa, setRevisaoTarefa] = useState<Tarefa | null>(null)
+  const [revisaoTitulo, setRevisaoTitulo] = useState('')
   const [revisaoData, setRevisaoData] = useState(format(new Date(), 'yyyy-MM-dd'))
   const [revisaoTempo, setRevisaoTempo] = useState(30)
   const [revisaoLoading, setRevisaoLoading] = useState(false)
@@ -118,12 +119,14 @@ export function ListaTarefas({ tarefas, disciplinas, disciplinaFiltro, onUpdate 
     setRevisaoLoading(true)
     await supabase.from('revisoes').insert({
       tarefas_id: revisaoTarefa.id,
+      titulo: revisaoTitulo.trim() || null,
       data_revisao: revisaoData,
       tempo_estimado: revisaoTempo,
       status: 'nao_iniciada',
     })
     setRevisaoLoading(false)
     setRevisaoTarefa(null)
+    setRevisaoTitulo('')
   }
 
   const prioridadeConfig = {
@@ -188,6 +191,7 @@ export function ListaTarefas({ tarefas, disciplinas, disciplinaFiltro, onUpdate 
           title="Criar revisão"
           onClick={() => {
             setRevisaoTarefa(tarefa)
+            setRevisaoTitulo('')
             setRevisaoData(format(new Date(), 'yyyy-MM-dd'))
             setRevisaoTempo(30)
           }}
@@ -354,6 +358,14 @@ export function ListaTarefas({ tarefas, disciplinas, disciplinaFiltro, onUpdate 
             <div className="p-3 rounded-lg bg-muted text-sm">
               <span className="font-medium">{revisaoTarefa?.titulo}</span>
               <span className="ml-2 text-muted-foreground">({revisaoTarefa?.disciplina?.codigo})</span>
+            </div>
+            <div className="space-y-1">
+              <label className="text-sm font-medium">Nome da revisão (opcional)</label>
+              <Input
+                value={revisaoTitulo}
+                onChange={(e) => setRevisaoTitulo(e.target.value)}
+                placeholder="Ex: Revisão de conceitos, Exercícios práticos..."
+              />
             </div>
             <div className="space-y-1">
               <label className="text-sm font-medium">Data da revisão</label>
