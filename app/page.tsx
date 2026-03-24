@@ -36,8 +36,10 @@ export default function Home() {
   const supabase = createClient()
 
   const checkAuth = useCallback(async () => {
-    const res = await fetch('/api/auth/session')
+    const res = await fetch('/api/auth/session', { credentials: 'include' })
     const data = await res.json()
+    
+    console.log('[v0] checkAuth response:', data)
     
     if (!data.user) {
       router.push('/auth/login')

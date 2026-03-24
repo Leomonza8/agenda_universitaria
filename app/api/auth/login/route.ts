@@ -1,7 +1,6 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 import bcrypt from 'bcryptjs'
-import { cookies } from 'next/headers'
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -38,8 +37,12 @@ export async function POST(request: Request) {
       isAdmin: user.is_admin,
     }
 
-    const cookieStore = await cookies()
-    cookieStore.set('session', JSON.stringify(sessionData), {
+    const response = NextResponse.json({ 
+      success: true, 
+      user: sessionData
+    })
+
+    response.cookies.set('session', JSON.stringify(sessionData), {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
       sameSite: 'lax',
@@ -47,10 +50,7 @@ export async function POST(request: Request) {
       path: '/',
     })
 
-    return NextResponse.json({ 
-      success: true, 
-      user: sessionData
-    })
+    return response
   } catch (err) {
     console.error('Login error:', err)
     return NextResponse.json({ error: 'Erro interno do servidor' }, { status: 500 })
