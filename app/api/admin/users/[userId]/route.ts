@@ -1,87 +1,54 @@
 import { NextResponse } from 'next/server'
-import { cookies } from 'next/headers'
-import { createClient } from '@/lib/supabase/client'
+import { createClient } from '@supabase/supabase-js'
 
-export async function PATCH(req: Request, { params }: { params: Promise<{ userId: string }> }) {
-  const cookieStore = await cookies()
-  const session = cookieStore.get('session')
+const supabase = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.SUPABASE_SERVICE_ROLE_KEY!
+)
 
-  if (!session) {
-    return NextResponse.json({ error: 'Not authenticated' }, { status: 401 })
-  }
-
+function validateAdmin(request: Request) {
+  const auth = request.headers.get('Authorization')
+  if (!auth) return null
   try {
-    const { userId } = await params
-    const body = await req.json()
-    const user = JSON.parse(session.value)
-
-    // Verificar se é admin
-    const supabase = createClient()
-    const { data: currentUser } = await supabase
-      .from('users')
-      .select('is_admin')
-      .eq('id', user.id)
-      .single()
-
-    if (!currentUser?.is_admin) {
-      return NextResponse.json({ error: 'Not admin' }, { status: 403 })
-    }
-
-    // Atualizar usuario
-    const { error } = await supabase
-      .from('users')
-      .update({ is_admin: body.is_admin })
-      .eq('id', userId)
-
-    if (error) throw error
-
-    return NextResponse.json({ success: true })
-  } catch (err) {
-    console.error('[v0] Admin update user error:', err)
-    return NextResponse.json({ error: 'Failed to update user' }, { status: 500 })
+    const session = JSON.parse(Buffer.from(auth, 'base64').toString())
+    if (!session.isAdmin) return null
+    return session
+  } catch {
+    return null
   }
 }
 
+export async function PATCH(req: Request, { params }: { params: Promise<{ userId: string }> }) {
+  const session = validateAdmin(req)
+  if (!session) return NextResponse.json({ error: 'Nao autorizado' }, { status: 403 })
+
+  const { userId } = await params
+  const body = await req.json()
+
+  const { error } = await supabase
+    .from('users')
+    .update({ is_admin: body.is_admin })
+    .eq('id', userId)
+
+  if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+  return NextResponse.json({ success: true })
+}
+
 export async function DELETE(req: Request, { params }: { params: Promise<{ userId: string }> }) {
-  const cookieStore = await cookies()
-  const session = cookieStore.get('session')
+  const session = validateAdmin(req)
+  if (!session) return NextResponse.json({ error: 'Nao autorizado' }, { status: 403 })
 
-  if (!session) {
-    return NextResponse.json({ error: 'Not authenticated' }, { status: 401 })
+  const { userId } = await params
+
+  if (userId === session.userId) {
+    return NextResponse.json({ error: 'Nao pode deletar a si mesmo' }, { status: 400 })
   }
 
-  try {
-    const { userId } = await params
-    const user = JSON.parse(session.value)
+  const { error } = await supabase
+    .from('users')
+    .delete()
+    .eq('id', userId)
 
-    // Verificar se é admin
-    const supabase = createClient()
-    const { data: currentUser } = await supabase
-      .from('users')
-      .select('is_admin')
-      .eq('id', user.id)
-      .single()
-
-    if (!currentUser?.is_admin) {
-      return NextResponse.json({ error: 'Not admin' }, { status: 403 })
-    }
-
-    // Nao deixar deletar a si mesmo
-    if (userId === user.id) {
-      return NextResponse.json({ error: 'Nao pode deletar a si mesmo' }, { status: 400 })
-    }
-
-    // Deletar usuario e todos os seus dados
-    const { error } = await supabase
-      .from('users')
-      .delete()
-      .eq('id', userId)
-
-    if (error) throw error
-
-    return NextResponse.json({ success: true })
-  } catch (err) {
-    console.error('[v0] Admin delete user error:', err)
-    return NextResponse.json({ error: 'Failed to delete user' }, { status: 500 })
-  }
+  if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+  return NextResponse.json({ success: true })
 }

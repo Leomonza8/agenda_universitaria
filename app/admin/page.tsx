@@ -64,9 +64,17 @@ export default function AdminPage() {
     fetchUsers()
   }
 
+  const getAuthHeader = () => {
+    const session = getSession()
+    if (!session) return {}
+    return { 'Authorization': Buffer.from(JSON.stringify(session)).toString('base64') }
+  }
+
   const fetchUsers = async () => {
     try {
-      const res = await fetch('/api/admin/users', { credentials: 'include' })
+      const res = await fetch('/api/admin/users', {
+        headers: getAuthHeader(),
+      })
       const data = await res.json()
       if (data.users) setUsers(data.users)
     } catch (err) {
@@ -120,11 +128,9 @@ export default function AdminPage() {
     try {
       const res = await fetch(`/api/admin/users/${userId}`, {
         method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
+        headers: { 'Content-Type': 'application/json', ...getAuthHeader() },
         body: JSON.stringify({ is_admin: !currentStatus }),
       })
-
       if (res.ok) fetchUsers()
     } catch (err) {
       console.error('Erro ao atualizar usuario:', err)
@@ -133,13 +139,11 @@ export default function AdminPage() {
 
   const deleteUser = async (userId: string) => {
     if (!confirm('Tem certeza que deseja excluir este usuario?')) return
-
     try {
       const res = await fetch(`/api/admin/users/${userId}`, {
         method: 'DELETE',
-        credentials: 'include',
+        headers: getAuthHeader(),
       })
-
       if (res.ok) fetchUsers()
     } catch (err) {
       console.error('Erro ao deletar usuario:', err)

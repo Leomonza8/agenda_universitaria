@@ -10,6 +10,8 @@ import { ListaTarefas } from '@/components/lista-tarefas'
 import { AnotacoesAula } from '@/components/anotacoes-aula'
 import { CalendarioSemanal } from '@/components/calendario-semanal'
 import { SistemaRevisao } from '@/components/sistema-revisao'
+import { EditorGrade } from '@/components/editor-grade'
+import { GerenciarDisciplinas } from '@/components/gerenciar-disciplinas'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -195,8 +197,9 @@ export default function Home() {
 
         <Tabs defaultValue="inicio" className="w-full">
           <div className="overflow-x-auto -mx-1 px-1 pb-1">
-            <TabsList className="inline-flex w-max min-w-full sm:grid sm:w-full sm:grid-cols-6 gap-0">
-              <TabsTrigger value="inicio" className="text-xs px-3 sm:px-4">Inicio</TabsTrigger>
+            <TabsList className="inline-flex w-max min-w-full sm:grid sm:w-full sm:grid-cols-7 gap-0">
+              <TabsTrigger value="inicio" className="text-xs px-3 sm:px-4">Início</TabsTrigger>
+              <TabsTrigger value="minha-grade" className="text-xs px-3 sm:px-4">Minha Grade</TabsTrigger>
               <TabsTrigger value="calendario" className="text-xs px-3 sm:px-4">Calendario</TabsTrigger>
               <TabsTrigger value="revisao" className="text-xs px-3 sm:px-4">Revisao</TabsTrigger>
               <TabsTrigger value="horarios" className="text-xs px-3 sm:px-4">Horarios</TabsTrigger>
@@ -272,6 +275,17 @@ export default function Home() {
                     ))}
                   </CardContent>
                 </Card>
+              </div>
+            </div>
+          </TabsContent>
+
+          <TabsContent value="minha-grade" className="mt-6 space-y-6">
+            <div className="grid lg:grid-cols-4 gap-6">
+              <div className="lg:col-span-3">
+                <EditorGrade horarios={horarios} disciplinas={disciplinas} onUpdate={fetchData} user={user} />
+              </div>
+              <div>
+                <GerenciarDisciplinas disciplinas={disciplinas} onUpdate={fetchData} user={user} />
               </div>
             </div>
           </TabsContent>
