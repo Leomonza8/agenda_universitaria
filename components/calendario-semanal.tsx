@@ -30,7 +30,7 @@ interface DayColumn {
   items: ItemCalendario[]
 }
 
-export function CalendarioSemanal() {
+export function CalendarioSemanal({ onUpdate }: { onUpdate?: () => void }) {
   const [weekStart, setWeekStart] = useState<Date>(() =>
     startOfWeek(new Date(), { weekStartsOn: 1 })
   )
@@ -186,6 +186,7 @@ export function CalendarioSemanal() {
       setNovaDisciplinaId('')
       setNovaPrioridade('media')
       setDialogOpen(false)
+      onUpdate?.()
     }
     setSaving(false)
   }

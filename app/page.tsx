@@ -214,7 +214,7 @@ export default function Home() {
 
           {/* Aba Calendário */}
           <TabsContent value="calendario" className="mt-6">
-            <CalendarioSemanal />
+            <CalendarioSemanal onUpdate={fetchData} />
           </TabsContent>
 
           {/* Aba Revisão */}
