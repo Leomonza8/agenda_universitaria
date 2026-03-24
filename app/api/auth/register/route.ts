@@ -1,12 +1,18 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
-import bcrypt from 'bcryptjs'
+import { scryptSync, randomBytes, timingSafeEqual } from 'crypto'
 import { cookies } from 'next/headers'
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 )
+
+function hashPassword(password: string): string {
+  const salt = randomBytes(16).toString('hex')
+  const hash = scryptSync(password, salt, 64).toString('hex')
+  return `${salt}:${hash}`
+}
 
 export async function POST(request: Request) {
   try {
@@ -37,7 +43,7 @@ export async function POST(request: Request) {
     const shouldBeAdmin = isFirstUser || (isCreatorAdmin && isAdmin)
 
     // Hash da senha
-    const passwordHash = await bcrypt.hash(password, 10)
+    const passwordHash = hashPassword(password)
 
     // Inserir usuario
     const { data: user, error } = await supabase

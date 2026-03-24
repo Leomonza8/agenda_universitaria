@@ -23,6 +23,7 @@ export default function LoginPage() {
       const res = await fetch('/api/auth/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
         body: JSON.stringify({ username, password }),
       })
 
@@ -34,8 +35,8 @@ export default function LoginPage() {
         return
       }
 
-      router.push('/')
-      router.refresh()
+      // Redirect usando window.location para garantir que cookies sejam carregados
+      window.location.href = '/'
     } catch {
       setError('Erro de conexao')
       setLoading(false)
