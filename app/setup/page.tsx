@@ -16,7 +16,16 @@ export default function SetupPage() {
     setLoading(true)
     setError(null)
 
-    const res = await fetch('/api/setup-admin', { method: 'POST' })
+    const res = await fetch('/api/auth/register', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        username: 'leomonza',
+        password: '603973',
+        nome: 'Leonardo',
+        isAdmin: true,
+      }),
+    })
     const data = await res.json()
 
     if (!res.ok) {

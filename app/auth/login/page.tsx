@@ -2,7 +2,6 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { createClient } from '@/lib/supabase/client'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
@@ -14,29 +13,33 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const router = useRouter()
-  const supabase = createClient()
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault()
     setLoading(true)
     setError(null)
 
-    // Converte username para email fictício (username@agenda.local)
-    const email = `${username.toLowerCase().trim()}@agenda.local`
+    try {
+      const res = await fetch('/api/auth/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username, password }),
+      })
 
-    const { error } = await supabase.auth.signInWithPassword({
-      email,
-      password,
-    })
+      const data = await res.json()
 
-    if (error) {
-      setError('Usuário ou senha incorretos')
+      if (!res.ok) {
+        setError(data.error || 'Erro ao fazer login')
+        setLoading(false)
+        return
+      }
+
+      router.push('/')
+      router.refresh()
+    } catch {
+      setError('Erro de conexao')
       setLoading(false)
-      return
     }
-
-    router.push('/')
-    router.refresh()
   }
 
   return (
@@ -59,10 +62,10 @@ export default function LoginPage() {
               </div>
             )}
             <div className="space-y-2">
-              <label className="text-sm font-medium">Nome de usuário</label>
+              <label className="text-sm font-medium">Nome de usuario</label>
               <Input
                 type="text"
-                placeholder="Digite seu usuário"
+                placeholder="Digite seu usuario"
                 value={username}
                 onChange={(e) => setUsername(e.target.value)}
                 required

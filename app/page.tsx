@@ -15,12 +15,16 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
 import { CalendarDays, BookOpen, CheckSquare, User, LogOut, Shield, Settings } from 'lucide-react'
-import type { User as SupabaseUser } from '@supabase/supabase-js'
+
+interface SessionUser {
+  userId: string
+  username: string
+  nome: string
+  isAdmin: boolean
+}
 
 export default function Home() {
-  const [user, setUser] = useState<SupabaseUser | null>(null)
-  const [username, setUsername] = useState<string | null>(null)
-  const [isAdmin, setIsAdmin] = useState(false)
+  const [user, setUser] = useState<SessionUser | null>(null)
   const [disciplinas, setDisciplinas] = useState<Disciplina[]>([])
   const [horarios, setHorarios] = useState<Horario[]>([])
   const [tarefas, setTarefas] = useState<Tarefa[]>([])
@@ -32,31 +36,26 @@ export default function Home() {
   const supabase = createClient()
 
   const checkAuth = useCallback(async () => {
-    const { data: { user } } = await supabase.auth.getUser()
-    if (!user) {
+    const res = await fetch('/api/auth/session')
+    const data = await res.json()
+    
+    if (!data.user) {
       router.push('/auth/login')
       return false
     }
-    setUser(user)
-
-    // Check if admin and get username
-    const { data: profile } = await supabase
-      .from('profiles')
-      .select('is_admin, username')
-      .eq('id', user.id)
-      .single()
-
-    setIsAdmin(profile?.is_admin ?? false)
-    setUsername(profile?.username ?? null)
+    
+    setUser(data.user)
     return true
-  }, [supabase, router])
+  }, [router])
 
   const fetchData = useCallback(async () => {
+    if (!user) return
+    
     const [disciplinasRes, horariosRes, tarefasRes, anotacoesRes] = await Promise.all([
-      supabase.from('disciplinas').select('*').order('codigo'),
-      supabase.from('horarios').select('*, disciplina:disciplinas(*)').order('hora_inicio'),
-      supabase.from('tarefas').select('*, disciplina:disciplinas(*)').order('data_entrega', { ascending: true, nullsFirst: false }),
-      supabase.from('anotacoes').select('*, disciplina:disciplinas(*)').order('data', { ascending: false }),
+      supabase.from('disciplinas').select('*').eq('user_id', user.userId).order('codigo'),
+      supabase.from('horarios').select('*, disciplina:disciplinas(*)').eq('user_id', user.userId).order('hora_inicio'),
+      supabase.from('tarefas').select('*, disciplina:disciplinas(*)').eq('user_id', user.userId).order('data_entrega', { ascending: true, nullsFirst: false }),
+      supabase.from('anotacoes').select('*, disciplina:disciplinas(*)').eq('user_id', user.userId).order('data', { ascending: false }),
     ])
 
     if (disciplinasRes.data) setDisciplinas(disciplinasRes.data)
@@ -64,20 +63,20 @@ export default function Home() {
     if (tarefasRes.data) setTarefas(tarefasRes.data)
     if (anotacoesRes.data) setAnotacoes(anotacoesRes.data)
     setLoading(false)
-  }, [supabase])
+  }, [supabase, user])
 
   useEffect(() => {
-    const init = async () => {
-      const isAuthenticated = await checkAuth()
-      if (isAuthenticated) {
-        fetchData()
-      }
+    checkAuth()
+  }, [checkAuth])
+
+  useEffect(() => {
+    if (user) {
+      fetchData()
     }
-    init()
-  }, [checkAuth, fetchData])
+  }, [user, fetchData])
 
   const handleLogout = async () => {
-    await supabase.auth.signOut()
+    await fetch('/api/auth/logout', { method: 'POST' })
     router.push('/auth/login')
   }
 
@@ -87,7 +86,6 @@ export default function Home() {
 
   const hoje = new Date().getDay()
   const aulasHoje = horarios.filter(h => h.dia_semana === hoje)
-
   const tarefasPendentes = tarefas.filter(t => !t.concluida).length
 
   if (loading) {
@@ -108,7 +106,7 @@ export default function Home() {
           <div className="flex items-center justify-between gap-2">
             <div>
               <h1 className="text-xl sm:text-2xl font-bold text-foreground leading-tight">Agenda</h1>
-              <p className="text-xs text-muted-foreground hidden sm:block">Seu planejador acadêmico</p>
+              <p className="text-xs text-muted-foreground hidden sm:block">Seu planejador academico</p>
             </div>
             <div className="flex items-center gap-2 flex-wrap justify-end">
               {tarefasPendentes > 0 && (
@@ -131,8 +129,8 @@ export default function Home() {
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end">
                   <div className="px-2 py-1.5 text-sm">
-                    <p className="font-medium">@{username}</p>
-                    {isAdmin && (
+                    <p className="font-medium">@{user?.username}</p>
+                    {user?.isAdmin && (
                       <p className="text-xs text-muted-foreground">Administrador</p>
                     )}
                   </div>
@@ -141,7 +139,7 @@ export default function Home() {
                     <Settings className="h-4 w-4 mr-2" />
                     Minhas Disciplinas
                   </DropdownMenuItem>
-                  {isAdmin && (
+                  {user?.isAdmin && (
                     <DropdownMenuItem onClick={() => router.push('/admin')}>
                       <Shield className="h-4 w-4 mr-2" />
                       Painel Admin
@@ -178,7 +176,7 @@ export default function Home() {
                   size="sm"
                   onClick={() => setDisciplinaSelecionada(null)}
                 >
-                  ✕
+                  X
                 </Button>
               </div>
             </CardHeader>
@@ -199,20 +197,18 @@ export default function Home() {
         <Tabs defaultValue="inicio" className="w-full">
           <div className="overflow-x-auto -mx-1 px-1 pb-1">
             <TabsList className="inline-flex w-max min-w-full sm:grid sm:w-full sm:grid-cols-6 gap-0">
-              <TabsTrigger value="inicio" className="text-xs px-3 sm:px-4">Início</TabsTrigger>
-              <TabsTrigger value="calendario" className="text-xs px-3 sm:px-4">Calendário</TabsTrigger>
-              <TabsTrigger value="revisao" className="text-xs px-3 sm:px-4">Revisão</TabsTrigger>
-              <TabsTrigger value="horarios" className="text-xs px-3 sm:px-4">Horários</TabsTrigger>
+              <TabsTrigger value="inicio" className="text-xs px-3 sm:px-4">Inicio</TabsTrigger>
+              <TabsTrigger value="calendario" className="text-xs px-3 sm:px-4">Calendario</TabsTrigger>
+              <TabsTrigger value="revisao" className="text-xs px-3 sm:px-4">Revisao</TabsTrigger>
+              <TabsTrigger value="horarios" className="text-xs px-3 sm:px-4">Horarios</TabsTrigger>
               <TabsTrigger value="tarefas" className="text-xs px-3 sm:px-4">Tarefas</TabsTrigger>
-              <TabsTrigger value="anotacoes" className="text-xs px-3 sm:px-4">Anotações</TabsTrigger>
+              <TabsTrigger value="anotacoes" className="text-xs px-3 sm:px-4">Anotacoes</TabsTrigger>
             </TabsList>
           </div>
 
-          {/* Aba Início */}
           <TabsContent value="inicio" className="mt-6">
             <div className="grid lg:grid-cols-3 gap-6">
               <div className="lg:col-span-2 space-y-6">
-                {/* Disciplinas */}
                 <Card>
                   <CardHeader className="pb-3">
                     <CardTitle className="text-lg flex items-center gap-2">
@@ -245,12 +241,11 @@ export default function Home() {
                   </CardContent>
                 </Card>
 
-                {/* Grade de Horários */}
                 <Card>
                   <CardHeader className="pb-3">
                     <CardTitle className="text-lg flex items-center gap-2">
                       <CalendarDays className="h-5 w-5" />
-                      Grade de Horários
+                      Grade de Horarios
                     </CardTitle>
                   </CardHeader>
                   <CardContent>
@@ -263,10 +258,9 @@ export default function Home() {
               </div>
 
               <div>
-                {/* Próximos Eventos */}
                 <Card>
                   <CardHeader className="pb-3">
-                    <CardTitle className="text-base">Próximos Eventos</CardTitle>
+                    <CardTitle className="text-base">Proximos Eventos</CardTitle>
                   </CardHeader>
                   <CardContent className="space-y-3">
                     {tarefas.filter(t => !t.concluida).slice(0, 3).map(t => (
@@ -283,23 +277,20 @@ export default function Home() {
             </div>
           </TabsContent>
 
-          {/* Aba Calendário */}
           <TabsContent value="calendario" className="mt-6">
             <CalendarioSemanal onUpdate={fetchData} />
           </TabsContent>
 
-          {/* Aba Revisão */}
           <TabsContent value="revisao" className="mt-6">
             <SistemaRevisao />
           </TabsContent>
 
-          {/* Aba Horários */}
           <TabsContent value="horarios" className="mt-6">
             <Card>
               <CardHeader className="pb-3">
                 <CardTitle className="flex items-center gap-2">
                   <CalendarDays className="h-5 w-5" />
-                  Grade de Horários
+                  Grade de Horarios
                 </CardTitle>
               </CardHeader>
               <CardContent>
@@ -311,7 +302,6 @@ export default function Home() {
             </Card>
           </TabsContent>
 
-          {/* Aba Tarefas */}
           <TabsContent value="tarefas" className="mt-6">
             <ListaTarefas
               tarefas={tarefas}
@@ -321,7 +311,6 @@ export default function Home() {
             />
           </TabsContent>
 
-          {/* Aba Anotações */}
           <TabsContent value="anotacoes" className="mt-6">
             <AnotacoesAula
               anotacoes={anotacoes}
