@@ -48,9 +48,17 @@ export function EditorGrade({ disciplinas, horarios, onUpdate, user }: Props) {
 
   const horasExibidas = expandNoturno ? TODAS_HORAS : HORAS_DIA
 
+  // Retorna o horário que ocupa este slot (hora_inicio === hora OU está dentro do intervalo)
   const getHorarioNaSlot = (dia: number, hora: string) => {
-    return horarios.find(h => h.dia_semana === dia && h.hora_inicio === hora)
+    return horarios.find(h =>
+      h.dia_semana === dia &&
+      h.hora_inicio <= hora &&
+      (h.hora_fim ? h.hora_fim > hora : h.hora_inicio === hora)
+    )
   }
+
+  // Retorna true apenas para o slot de INÍCIO do horário (onde deve renderizar o card)
+  const isSlotInicio = (horario: Horario, hora: string) => horario.hora_inicio === hora
 
   const handleDragStart = (disciplinaId: string) => {
     dragRef.current = disciplinaId
@@ -170,13 +178,18 @@ export function EditorGrade({ disciplinas, horarios, onUpdate, user }: Props) {
                       key={dia}
                       className="border-l border-border/50 min-h-[48px] relative transition-all"
                       style={{
-                        backgroundColor: isHover && !horario && dragging ? disciplinas.find(d => d.id === dragging)?.cor + '15' : undefined,
+                        backgroundColor: isHover && !horario && dragging
+                          ? disciplinas.find(d => d.id === dragging)?.cor + '15'
+                          : horario && !isSlotInicio(horario, hora)
+                            ? disc?.cor + '10'
+                            : undefined,
                       }}
-                      onDragOver={(e) => handleDragOver(e, dia, hora)}
+                      onDragOver={(e) => !horario && handleDragOver(e, dia, hora)}
                       onDragLeave={() => setHoverCell(null)}
-                      onDrop={(e) => handleDrop(e, dia, hora)}
+                      onDrop={(e) => !horario && handleDrop(e, dia, hora)}
                     >
-                      {disc && horario && (
+                      {/* Renderiza o card apenas no slot de INÍCIO */}
+                      {disc && horario && isSlotInicio(horario, hora) && (
                         <div
                           className="absolute inset-1 rounded-md text-xs font-semibold flex flex-col items-center justify-center gap-0.5 group shadow-sm hover:shadow-md transition-all"
                           style={{
@@ -188,7 +201,7 @@ export function EditorGrade({ disciplinas, horarios, onUpdate, user }: Props) {
                           <div>{disc.codigo}</div>
                           {horario.hora_fim && (
                             <div className="text-[10px] opacity-75">
-                              {horario.hora_inicio}-{horario.hora_fim}
+                              {horario.hora_inicio}–{horario.hora_fim}
                             </div>
                           )}
                           <button
@@ -198,6 +211,13 @@ export function EditorGrade({ disciplinas, horarios, onUpdate, user }: Props) {
                             <Trash2 className="h-3 w-3" />
                           </button>
                         </div>
+                      )}
+                      {/* Linha divisória suave nos slots intermediários ocupados */}
+                      {disc && horario && !isSlotInicio(horario, hora) && (
+                        <div
+                          className="absolute inset-x-1 top-0 h-px"
+                          style={{ backgroundColor: disc.cor + '40' }}
+                        />
                       )}
                       {!horario && isHover && dragging && (
                         <div className="absolute inset-1 rounded-md border-2 border-dashed border-primary/60 flex items-center justify-center bg-primary/5">
