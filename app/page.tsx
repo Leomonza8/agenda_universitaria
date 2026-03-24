@@ -3,12 +3,15 @@
 import { useEffect, useState, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
+import { getSession, clearSession } from '@/lib/auth'
 import { Disciplina, Horario, Tarefa, Anotacao, DIAS_SEMANA } from '@/lib/types'
 import { GradeHorarios } from '@/components/grade-horarios'
 import { ListaTarefas } from '@/components/lista-tarefas'
 import { AnotacoesAula } from '@/components/anotacoes-aula'
 import { CalendarioSemanal } from '@/components/calendario-semanal'
 import { SistemaRevisao } from '@/components/sistema-revisao'
+import { EditorGrade } from '@/components/editor-grade'
+import { GerenciarDisciplinas } from '@/components/gerenciar-disciplinas'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -35,18 +38,13 @@ export default function Home() {
   const router = useRouter()
   const supabase = createClient()
 
-  const checkAuth = useCallback(async () => {
-    const res = await fetch('/api/auth/session', { credentials: 'include' })
-    const data = await res.json()
-    
-    console.log('[v0] checkAuth response:', data)
-    
-    if (!data.user) {
+  const checkAuth = useCallback(() => {
+    const session = getSession()
+    if (!session) {
       router.push('/auth/login')
       return false
     }
-    
-    setUser(data.user)
+    setUser(session)
     return true
   }, [router])
 
@@ -68,7 +66,8 @@ export default function Home() {
   }, [supabase, user])
 
   useEffect(() => {
-    checkAuth()
+    const ok = checkAuth()
+    if (ok) setLoading(false)
   }, [checkAuth])
 
   useEffect(() => {
@@ -77,9 +76,9 @@ export default function Home() {
     }
   }, [user, fetchData])
 
-  const handleLogout = async () => {
-    await fetch('/api/auth/logout', { method: 'POST' })
-    router.push('/auth/login')
+  const handleLogout = () => {
+    clearSession()
+    window.location.href = '/auth/login'
   }
 
   const disciplinaInfo = disciplinaSelecionada
@@ -198,8 +197,9 @@ export default function Home() {
 
         <Tabs defaultValue="inicio" className="w-full">
           <div className="overflow-x-auto -mx-1 px-1 pb-1">
-            <TabsList className="inline-flex w-max min-w-full sm:grid sm:w-full sm:grid-cols-6 gap-0">
-              <TabsTrigger value="inicio" className="text-xs px-3 sm:px-4">Inicio</TabsTrigger>
+            <TabsList className="inline-flex w-max min-w-full sm:grid sm:w-full sm:grid-cols-7 gap-0">
+              <TabsTrigger value="inicio" className="text-xs px-3 sm:px-4">Início</TabsTrigger>
+              <TabsTrigger value="minha-grade" className="text-xs px-3 sm:px-4">Minha Grade</TabsTrigger>
               <TabsTrigger value="calendario" className="text-xs px-3 sm:px-4">Calendario</TabsTrigger>
               <TabsTrigger value="revisao" className="text-xs px-3 sm:px-4">Revisao</TabsTrigger>
               <TabsTrigger value="horarios" className="text-xs px-3 sm:px-4">Horarios</TabsTrigger>
@@ -275,6 +275,17 @@ export default function Home() {
                     ))}
                   </CardContent>
                 </Card>
+              </div>
+            </div>
+          </TabsContent>
+
+          <TabsContent value="minha-grade" className="mt-6 space-y-6">
+            <div className="grid lg:grid-cols-4 gap-6">
+              <div className="lg:col-span-3">
+                <EditorGrade horarios={horarios} disciplinas={disciplinas} onUpdate={fetchData} user={user} />
+              </div>
+              <div>
+                <GerenciarDisciplinas disciplinas={disciplinas} onUpdate={fetchData} user={user} />
               </div>
             </div>
           </TabsContent>

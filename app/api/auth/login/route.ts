@@ -47,20 +47,8 @@ export async function POST(request: Request) {
       isAdmin: user.is_admin,
     }
 
-    const response = NextResponse.json({ 
-      success: true, 
-      user: sessionData
-    })
-
-    response.cookies.set('session', JSON.stringify(sessionData), {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'lax',
-      maxAge: 60 * 60 * 24 * 7,
-      path: '/',
-    })
-
-    return response
+    // Retorna dados da sessão para o cliente salvar em localStorage
+    return NextResponse.json({ success: true, user: sessionData })
   } catch (err) {
     console.error('Login error:', err)
     return NextResponse.json({ error: 'Erro interno do servidor' }, { status: 500 })
