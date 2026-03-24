@@ -17,7 +17,7 @@ import {
   parseISO,
 } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 
@@ -30,7 +30,7 @@ interface DayColumn {
   items: ItemCalendario[]
 }
 
-export function CalendarioSemanal() {
+export function CalendarioSemanal({ onUpdate }: { onUpdate?: () => void }) {
   const [weekStart, setWeekStart] = useState<Date>(() =>
     startOfWeek(new Date(), { weekStartsOn: 1 })
   )
@@ -168,6 +168,13 @@ export function CalendarioSemanal() {
   const handleAddTarefaNoCalendario = async () => {
     if (!novoTitulo.trim() || !novaDisciplinaId) return
     setSaving(true)
+
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) {
+      setSaving(false)
+      return
+    }
+
     const { error, data } = await supabase
       .from('tarefas')
       .insert([{
@@ -176,6 +183,7 @@ export function CalendarioSemanal() {
         data_entrega: dialogDate || null,
         prioridade: novaPrioridade,
         concluida: false,
+        user_id: user.id,
       }])
       .select('*, disciplina:disciplinas(*)')
       .single()
@@ -186,6 +194,7 @@ export function CalendarioSemanal() {
       setNovaDisciplinaId('')
       setNovaPrioridade('media')
       setDialogOpen(false)
+      onUpdate?.()
     }
     setSaving(false)
   }
@@ -392,10 +401,11 @@ export function CalendarioSemanal() {
 
       {/* Dialog nova tarefa */}
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Nova Tarefa</DialogTitle>
-          </DialogHeader>
+<DialogContent>
+<DialogHeader>
+<DialogTitle>Nova Tarefa</DialogTitle>
+<DialogDescription>Adicione uma nova tarefa para o dia selecionado</DialogDescription>
+</DialogHeader>
           <div className="space-y-3">
             <Input
               placeholder="Título da tarefa"

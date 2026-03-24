@@ -22,7 +22,7 @@ export function AnotacoesAula({ anotacoes, disciplinas, disciplinaFiltro, onUpda
   const [showForm, setShowForm] = useState(false)
   const [conteudo, setConteudo] = useState('')
   const [disciplinaId, setDisciplinaId] = useState<string>('')
-  const [data, setData] = useState(format(new Date(), 'yyyy-MM-dd'))
+  const [dataAnotacao, setDataAnotacao] = useState(format(new Date(), 'yyyy-MM-dd'))
   const [loading, setLoading] = useState(false)
 
   const supabase = createClient()
@@ -35,25 +35,27 @@ export function AnotacoesAula({ anotacoes, disciplinas, disciplinaFiltro, onUpda
     if (!conteudo.trim() || !disciplinaId) return
     setLoading(true)
 
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) return
+
     const payload = {
       conteudo: conteudo.trim(),
       disciplina_id: disciplinaId,
-      data,
+      data: dataAnotacao,
+      user_id: user.id,
     }
 
     const { error } = await supabase.from('anotacoes').insert(payload)
 
-    if (error) {
-      setLoading(false)
-      return
-    }
+    setLoading(false)
+
+    if (error) return
 
     setConteudo('')
     setDisciplinaId('')
-    setData(format(new Date(), 'yyyy-MM-dd'))
+    setDataAnotacao(format(new Date(), 'yyyy-MM-dd'))
     setShowForm(false)
-    setLoading(false)
-    onUpdate()
+    await onUpdate()
   }
 
   const deleteAnotacao = async (id: string) => {
@@ -88,8 +90,8 @@ export function AnotacoesAula({ anotacoes, disciplinas, disciplinaFiltro, onUpda
               </Select>
               <input
                 type="date"
-                value={data}
-                onChange={(e) => setData(e.target.value)}
+                value={dataAnotacao}
+                onChange={(e) => setDataAnotacao(e.target.value)}
                 className="px-3 py-2 rounded-md border border-input bg-background text-sm"
               />
             </div>

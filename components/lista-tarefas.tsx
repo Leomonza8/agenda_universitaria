@@ -9,7 +9,7 @@ import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog'
 import { Plus, Trash2, BookOpen, Pencil } from 'lucide-react'
 import { format } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
@@ -57,6 +57,9 @@ export function ListaTarefas({ tarefas, disciplinas, disciplinaFiltro, onUpdate 
     if (!titulo.trim() || !disciplinaId) return
     setLoading(true)
 
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) return
+
     const payload = {
       titulo: titulo.trim(),
       descricao: descricao.trim() || null,
@@ -64,6 +67,7 @@ export function ListaTarefas({ tarefas, disciplinas, disciplinaFiltro, onUpdate 
       data_entrega: dataEntrega || null,
       prioridade,
       concluida: false,
+      user_id: user.id,
     }
 
     const { error } = await supabase.from('tarefas').insert(payload)
@@ -117,12 +121,17 @@ export function ListaTarefas({ tarefas, disciplinas, disciplinaFiltro, onUpdate 
   const handleCriarRevisao = async () => {
     if (!revisaoTarefa) return
     setRevisaoLoading(true)
+
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) return
+
     await supabase.from('revisoes').insert({
       tarefas_id: revisaoTarefa.id,
       titulo: revisaoTitulo.trim() || null,
       data_revisao: revisaoData,
       tempo_estimado: revisaoTempo,
       status: 'nao_iniciada',
+      user_id: user.id,
     })
     setRevisaoLoading(false)
     setRevisaoTarefa(null)
@@ -305,6 +314,9 @@ export function ListaTarefas({ tarefas, disciplinas, disciplinaFiltro, onUpdate 
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Editar Tarefa</DialogTitle>
+            <DialogDescription>
+              Atualize o nome, prioridade e data da sua tarefa
+            </DialogDescription>
           </DialogHeader>
           <div className="space-y-4 pt-2">
             <div className="space-y-1">
@@ -353,6 +365,9 @@ export function ListaTarefas({ tarefas, disciplinas, disciplinaFiltro, onUpdate 
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Criar Revisão</DialogTitle>
+            <DialogDescription>
+              Agende uma revisão para essa tarefa, definindo data e tempo estimado
+            </DialogDescription>
           </DialogHeader>
           <div className="space-y-4 pt-2">
             <div className="p-3 rounded-lg bg-muted text-sm">
