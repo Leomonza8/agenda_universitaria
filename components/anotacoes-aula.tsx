@@ -22,7 +22,7 @@ export function AnotacoesAula({ anotacoes, disciplinas, disciplinaFiltro, onUpda
   const [showForm, setShowForm] = useState(false)
   const [conteudo, setConteudo] = useState('')
   const [disciplinaId, setDisciplinaId] = useState<string>('')
-  const [data, setData] = useState(format(new Date(), 'yyyy-MM-dd'))
+  const [dataAnotacao, setDataAnotacao] = useState(format(new Date(), 'yyyy-MM-dd'))
   const [loading, setLoading] = useState(false)
 
   const supabase = createClient()
@@ -38,22 +38,26 @@ export function AnotacoesAula({ anotacoes, disciplinas, disciplinaFiltro, onUpda
     const payload = {
       conteudo: conteudo.trim(),
       disciplina_id: disciplinaId,
-      data,
+      data: dataAnotacao,
     }
 
-    const { error } = await supabase.from('anotacoes').insert(payload)
+    console.log('[v0] Inserindo anotação:', payload)
+    const { error, data: insertedData } = await supabase.from('anotacoes').insert(payload).select()
+
+    setLoading(false)
 
     if (error) {
-      setLoading(false)
+      console.log('[v0] Erro ao inserir anotação:', error)
       return
     }
 
+    console.log('[v0] Anotação inserida com sucesso:', insertedData)
+
     setConteudo('')
     setDisciplinaId('')
-    setData(format(new Date(), 'yyyy-MM-dd'))
+    setDataAnotacao(format(new Date(), 'yyyy-MM-dd'))
     setShowForm(false)
-    setLoading(false)
-    onUpdate()
+    await onUpdate()
   }
 
   const deleteAnotacao = async (id: string) => {
@@ -88,8 +92,8 @@ export function AnotacoesAula({ anotacoes, disciplinas, disciplinaFiltro, onUpda
               </Select>
               <input
                 type="date"
-                value={data}
-                onChange={(e) => setData(e.target.value)}
+                value={dataAnotacao}
+                onChange={(e) => setDataAnotacao(e.target.value)}
                 className="px-3 py-2 rounded-md border border-input bg-background text-sm"
               />
             </div>
