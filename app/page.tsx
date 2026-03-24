@@ -199,14 +199,13 @@ export default function Home() {
 
         <Tabs defaultValue="inicio" className="w-full">
           <div className="overflow-x-auto -mx-1 px-1 pb-1">
-            <TabsList className="inline-flex w-max min-w-full sm:grid sm:w-full sm:grid-cols-7 gap-0">
+            <TabsList className="inline-flex w-max min-w-full sm:grid sm:w-full sm:grid-cols-6 gap-0">
               <TabsTrigger value="inicio" className="text-xs px-3 sm:px-4">Início</TabsTrigger>
               <TabsTrigger value="minha-grade" className="text-xs px-3 sm:px-4">Minha Grade</TabsTrigger>
-              <TabsTrigger value="calendario" className="text-xs px-3 sm:px-4">Calendario</TabsTrigger>
-              <TabsTrigger value="revisao" className="text-xs px-3 sm:px-4">Revisao</TabsTrigger>
-              <TabsTrigger value="horarios" className="text-xs px-3 sm:px-4">Horarios</TabsTrigger>
+              <TabsTrigger value="calendario" className="text-xs px-3 sm:px-4">Calendário</TabsTrigger>
+              <TabsTrigger value="revisao" className="text-xs px-3 sm:px-4">Revisão</TabsTrigger>
               <TabsTrigger value="tarefas" className="text-xs px-3 sm:px-4">Tarefas</TabsTrigger>
-              <TabsTrigger value="anotacoes" className="text-xs px-3 sm:px-4">Anotacoes</TabsTrigger>
+              <TabsTrigger value="anotacoes" className="text-xs px-3 sm:px-4">Anotações</TabsTrigger>
             </TabsList>
           </div>
 
@@ -298,23 +297,6 @@ export default function Home() {
 
           <TabsContent value="revisao" className="mt-6">
             <SistemaRevisao />
-          </TabsContent>
-
-          <TabsContent value="horarios" className="mt-6">
-            <Card>
-              <CardHeader className="pb-3">
-                <CardTitle className="flex items-center gap-2">
-                  <CalendarDays className="h-5 w-5" />
-                  Grade de Horarios
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <GradeHorarios
-                  horarios={horarios}
-                  onSelectDisciplina={setDisciplinaSelecionada}
-                />
-              </CardContent>
-            </Card>
           </TabsContent>
 
           <TabsContent value="tarefas" className="mt-6">

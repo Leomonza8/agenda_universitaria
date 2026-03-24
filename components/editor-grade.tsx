@@ -23,9 +23,9 @@ const HORAS_DIA = [
   '07:00', '07:30', '08:00', '08:30', '09:00', '09:30',
   '10:00', '10:30', '11:00', '11:30', '12:00', '12:30',
   '13:00', '13:30', '14:00', '14:30', '15:00', '15:30',
-  '16:00', '16:30', '17:00', '17:30', '18:00',
+  '16:00', '16:30', '17:00', '17:30',
 ]
-const HORAS_NOTURNO = ['18:30', '19:00', '19:30', '20:00', '20:30', '21:00', '21:30', '22:00']
+const HORAS_NOTURNO = ['18:00', '18:30', '19:00', '19:30', '20:00', '20:30', '21:00', '21:30', '22:00']
 const TODAS_HORAS = [...HORAS_DIA, ...HORAS_NOTURNO]
 
 interface Props {
@@ -210,20 +210,20 @@ export function EditorGrade({ disciplinas, horarios, onUpdate, user }: Props) {
               </div>
             ))}
 
-            {/* Botão expandir noturno */}
-            {!expandNoturno && horarios.some(h => HORAS_NOTURNO.includes(h.hora_inicio)) && (
-              <div className="grid border-t border-border/50 bg-muted/50" style={{ gridTemplateColumns: '56px repeat(5, 120px)' }}>
-                <div colSpan={6} className="col-span-6 p-2">
-                  <button
-                    onClick={() => setExpandNoturno(true)}
-                    className="w-full flex items-center justify-center gap-1.5 text-xs font-medium text-muted-foreground hover:text-foreground transition-colors py-1"
-                  >
-                    <ChevronDown className="h-4 w-4" />
-                    Ver horários noturnos
-                  </button>
-                </div>
+            {/* Botão expandir/recolher noturno */}
+            <div className="grid border-t border-border/50 bg-muted/40" style={{ gridTemplateColumns: '56px repeat(5, 120px)' }}>
+              <div className="col-span-6 p-1.5">
+                <button
+                  onClick={() => setExpandNoturno(v => !v)}
+                  className="w-full flex items-center justify-center gap-1.5 text-xs font-medium text-muted-foreground hover:text-foreground transition-colors py-1"
+                >
+                  {expandNoturno
+                    ? <><ChevronDown className="h-3.5 w-3.5 rotate-180" /> Ocultar horários noturnos (após 18h)</>
+                    : <><ChevronDown className="h-3.5 w-3.5" /> Mostrar horários noturnos (18h - 22h)</>
+                  }
+                </button>
               </div>
-            )}
+            </div>
           </div>
         </div>
       </div>

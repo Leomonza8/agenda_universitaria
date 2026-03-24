@@ -1,7 +1,13 @@
 'use client'
 
+import { useState } from 'react'
 import { Horario, DIAS_SEMANA } from '@/lib/types'
 import { cn } from '@/lib/utils'
+import { ChevronDown, ChevronUp } from 'lucide-react'
+import { Button } from '@/components/ui/button'
+
+const HORA_LIMITE = '18:00'
+const DIAS_CURTOS = ['Seg', 'Ter', 'Qua', 'Qui', 'Sex']
 
 interface GradeHorariosProps {
   horarios: Horario[]
@@ -9,38 +15,50 @@ interface GradeHorariosProps {
 }
 
 export function GradeHorarios({ horarios, onSelectDisciplina }: GradeHorariosProps) {
-  const diasUteis = [1, 2, 3, 4, 5] // Segunda a Sexta (1=seg, 2=ter, etc)
-  
-  const horasUnicas = [...new Set(horarios.map(h => h.hora_inicio))].sort()
-  
-  const getAulaPorDiaHora = (dia: number, hora: string) => {
-    return horarios.find(h => h.dia_semana === dia && h.hora_inicio === hora)
+  const diasUteis = [1, 2, 3, 4, 5]
+  const [expandido, setExpandido] = useState(false)
+
+  const todasHoras = [...new Set(horarios.map(h => h.hora_inicio))].sort()
+  const temHorarioNoturno = todasHoras.some(h => h >= HORA_LIMITE)
+  const horasExibidas = expandido ? todasHoras : todasHoras.filter(h => h < HORA_LIMITE)
+
+  const getAulaPorDiaHora = (dia: number, hora: string) =>
+    horarios.find(h => h.dia_semana === dia && h.hora_inicio === hora)
+
+  if (todasHoras.length === 0) {
+    return (
+      <p className="text-sm text-muted-foreground text-center py-6">
+        Acesse "Minha Grade" e arraste disciplinas para criar seu horário.
+      </p>
+    )
   }
 
   return (
-    <div className="overflow-x-auto">
-      <table className="w-full border-collapse text-sm">
-        <thead>
-          <tr>
-            <th className="border border-border bg-muted p-2 text-left font-medium">Horário</th>
-            {diasUteis.map(dia => (
-              <th key={dia} className="border border-border bg-muted p-2 text-center font-medium">
-                {DIAS_SEMANA[dia]}
+    <div className="space-y-2">
+      <div className="overflow-x-auto rounded-md border border-border">
+        <table className="w-full border-collapse text-xs">
+          <thead>
+            <tr className="bg-muted">
+              <th className="p-2 text-left font-semibold text-muted-foreground w-14 border-b border-border">
+                Hora
               </th>
-            ))}
-          </tr>
-        </thead>
-        <tbody>
-          {horasUnicas.length === 0 ? (
-            <tr>
-              <td colSpan={6} className="border border-border p-4 text-center text-muted-foreground">
-                Arraste disciplinas na aba "Minha Grade" para criar seu horário
-              </td>
+              {diasUteis.map((dia, i) => (
+                <th key={dia} className="p-2 text-center font-semibold border-b border-l border-border">
+                  {DIAS_CURTOS[i]}
+                </th>
+              ))}
             </tr>
-          ) : (
-            horasUnicas.map(hora => (
-              <tr key={hora}>
-                <td className="border border-border bg-muted/50 p-2 text-center font-medium whitespace-nowrap">
+          </thead>
+          <tbody>
+            {horasExibidas.map((hora, idx) => (
+              <tr
+                key={hora}
+                className={cn(
+                  'transition-colors',
+                  idx % 2 === 0 ? 'bg-background' : 'bg-muted/20'
+                )}
+              >
+                <td className="p-1.5 text-center font-mono text-muted-foreground border-r border-border whitespace-nowrap text-[11px]">
                   {hora}
                 </td>
                 {diasUteis.map(dia => {
@@ -49,33 +67,43 @@ export function GradeHorarios({ horarios, onSelectDisciplina }: GradeHorariosPro
                     <td
                       key={`${dia}-${hora}`}
                       className={cn(
-                        'border border-border p-2 text-center transition-colors',
+                        'border-l border-border p-1 text-center h-9 transition-colors',
                         aula && 'cursor-pointer hover:opacity-80'
                       )}
-                      style={aula ? { backgroundColor: aula.disciplina?.cor + '20' } : undefined}
+                      style={aula ? { backgroundColor: aula.disciplina?.cor + '18' } : undefined}
                       onClick={() => aula && onSelectDisciplina(aula.disciplina_id)}
                     >
                       {aula && (
-                        <div className="flex flex-col gap-0.5">
-                          <span
-                            className="font-medium text-xs leading-tight"
-                            style={{ color: aula.disciplina?.cor }}
-                          >
-                            {aula.disciplina?.codigo}
-                          </span>
-                          <span className="text-[10px] text-muted-foreground truncate max-w-[100px]">
-                            {aula.local}
-                          </span>
-                        </div>
+                        <span
+                          className="font-semibold text-[11px] leading-none"
+                          style={{ color: aula.disciplina?.cor }}
+                        >
+                          {aula.disciplina?.codigo}
+                        </span>
                       )}
                     </td>
                   )
                 })}
               </tr>
-            ))
+            ))}
+          </tbody>
+        </table>
+      </div>
+
+      {temHorarioNoturno && (
+        <Button
+          variant="ghost"
+          size="sm"
+          className="w-full text-xs text-muted-foreground gap-1"
+          onClick={() => setExpandido(v => !v)}
+        >
+          {expandido ? (
+            <><ChevronUp className="h-3.5 w-3.5" /> Ocultar horários noturnos</>
+          ) : (
+            <><ChevronDown className="h-3.5 w-3.5" /> Ver horários noturnos</>
           )}
-        </tbody>
-      </table>
+        </Button>
+      )}
     </div>
   )
 }
