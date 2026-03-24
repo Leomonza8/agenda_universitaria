@@ -65,24 +65,24 @@ export default function Home() {
 
   return (
     <main className="min-h-screen bg-background">
-      <div className="border-b border-border bg-card">
-        <div className="max-w-7xl mx-auto px-4 py-4">
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+      <div className="border-b border-border bg-card sticky top-0 z-10">
+        <div className="max-w-7xl mx-auto px-3 sm:px-4 py-3">
+          <div className="flex items-center justify-between gap-2">
             <div>
-              <h1 className="text-2xl font-bold text-foreground">Agenda</h1>
-              <p className="text-sm text-muted-foreground">Seu planejador acadêmico</p>
+              <h1 className="text-xl sm:text-2xl font-bold text-foreground leading-tight">Agenda</h1>
+              <p className="text-xs text-muted-foreground hidden sm:block">Seu planejador acadêmico</p>
             </div>
-            <div className="flex items-center gap-2 flex-wrap">
+            <div className="flex items-center gap-1.5 flex-wrap justify-end">
               {tarefasPendentes > 0 && (
-                <Badge variant="secondary" className="gap-1">
+                <Badge variant="secondary" className="gap-1 text-xs">
                   <CheckSquare className="h-3 w-3" />
-                  {tarefasPendentes} tarefa{tarefasPendentes > 1 ? 's' : ''}
+                  {tarefasPendentes}
                 </Badge>
               )}
               {aulasHoje.length > 0 && (
-                <Badge variant="outline" className="gap-1">
+                <Badge variant="outline" className="gap-1 text-xs">
                   <CalendarDays className="h-3 w-3" />
-                  {aulasHoje.length} aula{aulasHoje.length > 1 ? 's' : ''} hoje
+                  {aulasHoje.length} hoje
                 </Badge>
               )}
             </div>
@@ -90,7 +90,7 @@ export default function Home() {
         </div>
       </div>
 
-      <div className="max-w-7xl mx-auto px-4 py-6">
+      <div className="max-w-7xl mx-auto px-3 sm:px-4 py-4 sm:py-6">
         {disciplinaSelecionada && disciplinaInfo && (
           <Card className="mb-6">
             <CardHeader className="pb-3">
@@ -128,14 +128,16 @@ export default function Home() {
         )}
 
         <Tabs defaultValue="inicio" className="w-full">
-          <TabsList className="grid w-full grid-cols-4 lg:grid-cols-6">
-            <TabsTrigger value="inicio" className="text-xs">Início</TabsTrigger>
-            <TabsTrigger value="calendario" className="text-xs">Calendário</TabsTrigger>
-            <TabsTrigger value="revisao" className="text-xs">Revisão</TabsTrigger>
-            <TabsTrigger value="horarios" className="text-xs">Horários</TabsTrigger>
-            <TabsTrigger value="tarefas" className="text-xs">Tarefas</TabsTrigger>
-            <TabsTrigger value="anotacoes" className="text-xs">Anotações</TabsTrigger>
-          </TabsList>
+          <div className="overflow-x-auto -mx-1 px-1 pb-1">
+            <TabsList className="inline-flex w-max min-w-full sm:grid sm:w-full sm:grid-cols-6 gap-0">
+              <TabsTrigger value="inicio" className="text-xs px-3 sm:px-4">Início</TabsTrigger>
+              <TabsTrigger value="calendario" className="text-xs px-3 sm:px-4">Calendário</TabsTrigger>
+              <TabsTrigger value="revisao" className="text-xs px-3 sm:px-4">Revisão</TabsTrigger>
+              <TabsTrigger value="horarios" className="text-xs px-3 sm:px-4">Horários</TabsTrigger>
+              <TabsTrigger value="tarefas" className="text-xs px-3 sm:px-4">Tarefas</TabsTrigger>
+              <TabsTrigger value="anotacoes" className="text-xs px-3 sm:px-4">Anotações</TabsTrigger>
+            </TabsList>
+          </div>
 
           {/* Aba Início */}
           <TabsContent value="inicio" className="mt-6">
