@@ -2,7 +2,6 @@
 
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { createClient } from '@/lib/supabase/client'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
@@ -10,17 +9,24 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import { Badge } from '@/components/ui/badge'
 import { ArrowLeft, Plus, Trash2, Shield } from 'lucide-react'
 
-interface Profile {
+interface User {
   id: string
+  username: string
   nome: string | null
-  email: string | null
-  username: string | null
   is_admin: boolean
   created_at: string
 }
 
+interface SessionUser {
+  id: string
+  username: string
+  nome: string | null
+  is_admin: boolean
+}
+
 export default function AdminPage() {
-  const [profiles, setProfiles] = useState<Profile[]>([])
+  const [users, setUsers] = useState<User[]>([])
+  const [currentUser, setCurrentUser] = useState<SessionUser | null>(null)
   const [loading, setLoading] = useState(true)
   const [isAdmin, setIsAdmin] = useState(false)
   const [dialogOpen, setDialogOpen] = useState(false)
@@ -33,113 +39,111 @@ export default function AdminPage() {
   const [novaSenha, setNovaSenha] = useState('')
 
   const router = useRouter()
-  const supabase = createClient()
 
   useEffect(() => {
     checkAdminAndFetch()
   }, [])
 
   const checkAdminAndFetch = async () => {
-    const { data: { user } } = await supabase.auth.getUser()
-    if (!user) {
+    const res = await fetch('/api/auth/session', { credentials: 'include' })
+    const data = await res.json()
+
+    if (!data.user) {
       router.push('/auth/login')
       return
     }
 
-    const { data: profile } = await supabase
-      .from('profiles')
-      .select('is_admin')
-      .eq('id', user.id)
-      .single()
-
-    if (!profile?.is_admin) {
+    setCurrentUser(data.user)
+    
+    if (!data.user.is_admin) {
       router.push('/')
       return
     }
 
     setIsAdmin(true)
-    fetchProfiles()
+    fetchUsers()
   }
 
-  const fetchProfiles = async () => {
-    const { data } = await supabase
-      .from('profiles')
-      .select('*')
-      .order('created_at', { ascending: false })
-
-    if (data) setProfiles(data)
+  const fetchUsers = async () => {
+    try {
+      const res = await fetch('/api/admin/users', { credentials: 'include' })
+      const data = await res.json()
+      if (data.users) setUsers(data.users)
+    } catch (err) {
+      console.error('Erro ao buscar usuarios:', err)
+    }
     setLoading(false)
   }
 
   const handleCriarUsuario = async () => {
-    if (!novoUsername || !novaSenha || !novoNome) return
+    if (!novoUsername.trim() || !novaSenha.trim() || !novoNome.trim()) {
+      setError('Preencha todos os campos')
+      return
+    }
+
     setSaving(true)
     setError(null)
 
-    const username = novoUsername.toLowerCase().trim()
-    const email = `${username}@agenda.local`
-
-    // Verificar se username ja existe
-    const { data: existingUser } = await supabase
-      .from('profiles')
-      .select('id')
-      .eq('username', username)
-      .single()
-
-    if (existingUser) {
-      setError('Este nome de usuario ja existe')
-      setSaving(false)
-      return
-    }
-
-    // Create user via signUp
-    const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
-      email,
-      password: novaSenha,
-      options: {
-        data: { nome: novoNome, username },
-        emailRedirectTo: `${window.location.origin}/auth/login`,
-      },
-    })
-
-    if (signUpError) {
-      setError(signUpError.message)
-      setSaving(false)
-      return
-    }
-
-    if (signUpData.user) {
-      // Insert profile manually (trigger may not fire immediately)
-      await supabase.from('profiles').upsert({
-        id: signUpData.user.id,
-        nome: novoNome,
-        email,
-        username,
-        is_admin: false,
+    try {
+      const res = await fetch('/api/auth/register', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({
+          username: novoUsername.toLowerCase().trim(),
+          password: novaSenha,
+          nome: novoNome,
+        }),
       })
+
+      const data = await res.json()
+
+      if (!res.ok) {
+        setError(data.error || 'Erro ao criar usuario')
+        return
+      }
+
+      setNovoNome('')
+      setNovoUsername('')
+      setNovaSenha('')
+      setDialogOpen(false)
+      fetchUsers()
+    } catch (err) {
+      setError('Erro ao criar usuario')
+      console.error(err)
+    } finally {
+      setSaving(false)
     }
-
-    setNovoNome('')
-    setNovoUsername('')
-    setNovaSenha('')
-    setDialogOpen(false)
-    setSaving(false)
-    fetchProfiles()
   }
 
-  const toggleAdmin = async (profileId: string, currentStatus: boolean) => {
-    await supabase
-      .from('profiles')
-      .update({ is_admin: !currentStatus })
-      .eq('id', profileId)
-    fetchProfiles()
+  const toggleAdmin = async (userId: string, currentStatus: boolean) => {
+    try {
+      const res = await fetch(`/api/admin/users/${userId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ is_admin: !currentStatus }),
+      })
+
+      if (res.ok) fetchUsers()
+    } catch (err) {
+      console.error('Erro ao atualizar usuario:', err)
+    }
   }
 
-  const deleteUser = async (profileId: string) => {
+  const deleteUser = async (userId: string) => {
     if (!confirm('Tem certeza que deseja excluir este usuario?')) return
-    
-    await supabase.from('profiles').delete().eq('id', profileId)
-    fetchProfiles()
+
+    try {
+      const res = await fetch(`/api/admin/users/${userId}`, {
+        method: 'DELETE',
+        credentials: 'include',
+      })
+
+      if (res.ok) fetchUsers()
+    } catch (err) {
+      console.error('Erro ao deletar usuario:', err)
+    }
   }
 
   if (loading) {
@@ -180,24 +184,24 @@ export default function AdminPage() {
         <Card>
           <CardHeader>
             <CardTitle>Usuarios Cadastrados</CardTitle>
-            <CardDescription>{profiles.length} usuario(s) no sistema</CardDescription>
+            <CardDescription>{users.length} usuario(s) no sistema</CardDescription>
           </CardHeader>
           <CardContent>
             <div className="space-y-3">
-              {profiles.map(p => (
+              {users.map(user => (
                 <div
-                  key={p.id}
+                  key={user.id}
                   className="flex items-center justify-between p-3 rounded-lg border bg-card"
                 >
                   <div className="flex items-center gap-3">
                     <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center text-primary font-medium">
-                      {p.nome?.charAt(0).toUpperCase() || p.username?.charAt(0).toUpperCase() || '?'}
+                      {user.nome?.charAt(0).toUpperCase() || user.username.charAt(0).toUpperCase() || '?'}
                     </div>
                     <div>
-                      <p className="font-medium">{p.nome || 'Sem nome'}</p>
-                      <p className="text-sm text-muted-foreground">@{p.username}</p>
+                      <p className="font-medium">{user.nome || 'Sem nome'}</p>
+                      <p className="text-sm text-muted-foreground">@{user.username}</p>
                     </div>
-                    {p.is_admin && (
+                    {user.is_admin && (
                       <Badge variant="secondary">
                         <Shield className="h-3 w-3 mr-1" />
                         Admin
@@ -208,15 +212,15 @@ export default function AdminPage() {
                     <Button
                       variant="outline"
                       size="sm"
-                      onClick={() => toggleAdmin(p.id, p.is_admin)}
+                      onClick={() => toggleAdmin(user.id, user.is_admin)}
                     >
-                      {p.is_admin ? 'Remover Admin' : 'Tornar Admin'}
+                      {user.is_admin ? 'Remover Admin' : 'Tornar Admin'}
                     </Button>
                     <Button
                       variant="ghost"
                       size="icon"
                       className="text-destructive hover:text-destructive"
-                      onClick={() => deleteUser(p.id)}
+                      onClick={() => deleteUser(user.id)}
                     >
                       <Trash2 className="h-4 w-4" />
                     </Button>
@@ -224,7 +228,7 @@ export default function AdminPage() {
                 </div>
               ))}
 
-              {profiles.length === 0 && (
+              {users.length === 0 && (
                 <p className="text-center text-muted-foreground py-8">
                   Nenhum usuario cadastrado ainda
                 </p>
@@ -261,10 +265,10 @@ export default function AdminPage() {
               <label className="text-sm font-medium">Nome de usuario</label>
               <Input
                 value={novoUsername}
-                onChange={e => setNovoUsername(e.target.value.toLowerCase().replace(/[^a-z0-9]/g, ''))}
+                onChange={e => setNovoUsername(e.target.value.toLowerCase().replace(/[^a-z0-9_]/g, ''))}
                 placeholder="nome_usuario"
               />
-              <p className="text-xs text-muted-foreground">Apenas letras e numeros, sem espacos</p>
+              <p className="text-xs text-muted-foreground">Apenas letras, numeros e underscore</p>
             </div>
             <div className="space-y-1">
               <label className="text-sm font-medium">Senha</label>
@@ -279,7 +283,7 @@ export default function AdminPage() {
               <Button variant="outline" onClick={() => setDialogOpen(false)}>
                 Cancelar
               </Button>
-              <Button onClick={handleCriarUsuario} disabled={saving || !novoUsername || !novaSenha || !novoNome}>
+              <Button onClick={handleCriarUsuario} disabled={saving || !novoUsername.trim() || !novaSenha.trim() || !novoNome.trim()}>
                 {saving ? 'Criando...' : 'Criar Usuario'}
               </Button>
             </div>
