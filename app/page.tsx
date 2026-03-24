@@ -51,11 +51,13 @@ export default function Home() {
   const fetchData = useCallback(async () => {
     if (!user) return
     
-    const [disciplinasRes, horariosRes, tarefasRes, anotacoesRes] = await Promise.all([
-      supabase.from('disciplinas').select('*').eq('user_id', user.userId).order('codigo'),
+    const [disciplinasRes, horariosRes, tarefasRes, anotacoesRes, revsoesRes] = await Promise.all([
+      // Buscar disciplinas públicas + disciplinas do usuário
+      supabase.from('disciplinas').select('*').or(`user_id.is.null,user_id.eq.${user.userId}`).order('codigo'),
       supabase.from('horarios').select('*, disciplina:disciplinas(*)').eq('user_id', user.userId).order('hora_inicio'),
       supabase.from('tarefas').select('*, disciplina:disciplinas(*)').eq('user_id', user.userId).order('data_entrega', { ascending: true, nullsFirst: false }),
       supabase.from('anotacoes').select('*, disciplina:disciplinas(*)').eq('user_id', user.userId).order('data', { ascending: false }),
+      supabase.from('revisoes').select('*, tarefa:tarefas(*)').eq('user_id', user.userId).order('data_revisao'),
     ])
 
     if (disciplinasRes.data) setDisciplinas(disciplinasRes.data)
@@ -197,14 +199,13 @@ export default function Home() {
 
         <Tabs defaultValue="inicio" className="w-full">
           <div className="overflow-x-auto -mx-1 px-1 pb-1">
-            <TabsList className="inline-flex w-max min-w-full sm:grid sm:w-full sm:grid-cols-7 gap-0">
+            <TabsList className="inline-flex w-max min-w-full sm:grid sm:w-full sm:grid-cols-6 gap-0">
               <TabsTrigger value="inicio" className="text-xs px-3 sm:px-4">Início</TabsTrigger>
               <TabsTrigger value="minha-grade" className="text-xs px-3 sm:px-4">Minha Grade</TabsTrigger>
-              <TabsTrigger value="calendario" className="text-xs px-3 sm:px-4">Calendario</TabsTrigger>
-              <TabsTrigger value="revisao" className="text-xs px-3 sm:px-4">Revisao</TabsTrigger>
-              <TabsTrigger value="horarios" className="text-xs px-3 sm:px-4">Horarios</TabsTrigger>
+              <TabsTrigger value="calendario" className="text-xs px-3 sm:px-4">Calendário</TabsTrigger>
+              <TabsTrigger value="revisao" className="text-xs px-3 sm:px-4">Revisão</TabsTrigger>
               <TabsTrigger value="tarefas" className="text-xs px-3 sm:px-4">Tarefas</TabsTrigger>
-              <TabsTrigger value="anotacoes" className="text-xs px-3 sm:px-4">Anotacoes</TabsTrigger>
+              <TabsTrigger value="anotacoes" className="text-xs px-3 sm:px-4">Anotações</TabsTrigger>
             </TabsList>
           </div>
 
@@ -296,23 +297,6 @@ export default function Home() {
 
           <TabsContent value="revisao" className="mt-6">
             <SistemaRevisao />
-          </TabsContent>
-
-          <TabsContent value="horarios" className="mt-6">
-            <Card>
-              <CardHeader className="pb-3">
-                <CardTitle className="flex items-center gap-2">
-                  <CalendarDays className="h-5 w-5" />
-                  Grade de Horarios
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <GradeHorarios
-                  horarios={horarios}
-                  onSelectDisciplina={setDisciplinaSelecionada}
-                />
-              </CardContent>
-            </Card>
           </TabsContent>
 
           <TabsContent value="tarefas" className="mt-6">
