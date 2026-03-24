@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
+import { getSession, clearSession } from '@/lib/auth'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
@@ -45,18 +46,17 @@ export default function AdminPage() {
   }, [])
 
   const checkAdminAndFetch = async () => {
-    const res = await fetch('/api/auth/session', { credentials: 'include' })
-    const data = await res.json()
+    const session = getSession()
 
-    if (!data.user) {
-      router.push('/auth/login')
+    if (!session) {
+      window.location.href = '/auth/login'
       return
     }
 
-    setCurrentUser(data.user)
-    
-    if (!data.user.is_admin) {
-      router.push('/')
+    setCurrentUser({ id: session.userId, username: session.username, nome: session.nome, is_admin: session.isAdmin })
+
+    if (!session.isAdmin) {
+      window.location.href = '/'
       return
     }
 

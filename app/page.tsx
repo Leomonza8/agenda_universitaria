@@ -3,6 +3,7 @@
 import { useEffect, useState, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
+import { getSession, clearSession } from '@/lib/auth'
 import { Disciplina, Horario, Tarefa, Anotacao, DIAS_SEMANA } from '@/lib/types'
 import { GradeHorarios } from '@/components/grade-horarios'
 import { ListaTarefas } from '@/components/lista-tarefas'
@@ -35,18 +36,13 @@ export default function Home() {
   const router = useRouter()
   const supabase = createClient()
 
-  const checkAuth = useCallback(async () => {
-    const res = await fetch('/api/auth/session', { credentials: 'include' })
-    const data = await res.json()
-    
-    console.log('[v0] checkAuth response:', data)
-    
-    if (!data.user) {
+  const checkAuth = useCallback(() => {
+    const session = getSession()
+    if (!session) {
       router.push('/auth/login')
       return false
     }
-    
-    setUser(data.user)
+    setUser(session)
     return true
   }, [router])
 
@@ -68,7 +64,8 @@ export default function Home() {
   }, [supabase, user])
 
   useEffect(() => {
-    checkAuth()
+    const ok = checkAuth()
+    if (ok) setLoading(false)
   }, [checkAuth])
 
   useEffect(() => {
@@ -77,9 +74,9 @@ export default function Home() {
     }
   }, [user, fetchData])
 
-  const handleLogout = async () => {
-    await fetch('/api/auth/logout', { method: 'POST' })
-    router.push('/auth/login')
+  const handleLogout = () => {
+    clearSession()
+    window.location.href = '/auth/login'
   }
 
   const disciplinaInfo = disciplinaSelecionada
