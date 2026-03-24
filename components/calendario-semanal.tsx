@@ -168,6 +168,13 @@ export function CalendarioSemanal({ onUpdate }: { onUpdate?: () => void }) {
   const handleAddTarefaNoCalendario = async () => {
     if (!novoTitulo.trim() || !novaDisciplinaId) return
     setSaving(true)
+
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) {
+      setSaving(false)
+      return
+    }
+
     const { error, data } = await supabase
       .from('tarefas')
       .insert([{
@@ -176,6 +183,7 @@ export function CalendarioSemanal({ onUpdate }: { onUpdate?: () => void }) {
         data_entrega: dialogDate || null,
         prioridade: novaPrioridade,
         concluida: false,
+        user_id: user.id,
       }])
       .select('*, disciplina:disciplinas(*)')
       .single()

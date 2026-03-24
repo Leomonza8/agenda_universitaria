@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState, useCallback } from 'react'
+import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { Disciplina, Horario, Tarefa, Anotacao, DIAS_SEMANA } from '@/lib/types'
 import { GradeHorarios } from '@/components/grade-horarios'
@@ -12,9 +13,13 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { CalendarDays, BookOpen, CheckSquare } from 'lucide-react'
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
+import { CalendarDays, BookOpen, CheckSquare, User, LogOut, Shield } from 'lucide-react'
+import type { User as SupabaseUser } from '@supabase/supabase-js'
 
 export default function Home() {
+  const [user, setUser] = useState<SupabaseUser | null>(null)
+  const [isAdmin, setIsAdmin] = useState(false)
   const [disciplinas, setDisciplinas] = useState<Disciplina[]>([])
   const [horarios, setHorarios] = useState<Horario[]>([])
   const [tarefas, setTarefas] = useState<Tarefa[]>([])
@@ -22,7 +27,27 @@ export default function Home() {
   const [disciplinaSelecionada, setDisciplinaSelecionada] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
 
+  const router = useRouter()
   const supabase = createClient()
+
+  const checkAuth = useCallback(async () => {
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) {
+      router.push('/auth/login')
+      return false
+    }
+    setUser(user)
+
+    // Check if admin
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('is_admin')
+      .eq('id', user.id)
+      .single()
+
+    setIsAdmin(profile?.is_admin ?? false)
+    return true
+  }, [supabase, router])
 
   const fetchData = useCallback(async () => {
     const [disciplinasRes, horariosRes, tarefasRes, anotacoesRes] = await Promise.all([
@@ -40,8 +65,19 @@ export default function Home() {
   }, [supabase])
 
   useEffect(() => {
-    fetchData()
-  }, [fetchData])
+    const init = async () => {
+      const isAuthenticated = await checkAuth()
+      if (isAuthenticated) {
+        fetchData()
+      }
+    }
+    init()
+  }, [checkAuth, fetchData])
+
+  const handleLogout = async () => {
+    await supabase.auth.signOut()
+    router.push('/auth/login')
+  }
 
   const disciplinaInfo = disciplinaSelecionada
     ? disciplinas.find(d => d.id === disciplinaSelecionada)
@@ -72,7 +108,7 @@ export default function Home() {
               <h1 className="text-xl sm:text-2xl font-bold text-foreground leading-tight">Agenda</h1>
               <p className="text-xs text-muted-foreground hidden sm:block">Seu planejador acadêmico</p>
             </div>
-            <div className="flex items-center gap-1.5 flex-wrap justify-end">
+            <div className="flex items-center gap-2 flex-wrap justify-end">
               {tarefasPendentes > 0 && (
                 <Badge variant="secondary" className="gap-1 text-xs">
                   <CheckSquare className="h-3 w-3" />
@@ -85,6 +121,32 @@ export default function Home() {
                   {aulasHoje.length} hoje
                 </Badge>
               )}
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="ghost" size="icon" className="rounded-full">
+                    <User className="h-5 w-5" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  <div className="px-2 py-1.5 text-sm">
+                    <p className="font-medium">{user?.email}</p>
+                    {isAdmin && (
+                      <p className="text-xs text-muted-foreground">Administrador</p>
+                    )}
+                  </div>
+                  <DropdownMenuSeparator />
+                  {isAdmin && (
+                    <DropdownMenuItem onClick={() => router.push('/admin')}>
+                      <Shield className="h-4 w-4 mr-2" />
+                      Painel Admin
+                    </DropdownMenuItem>
+                  )}
+                  <DropdownMenuItem onClick={handleLogout} className="text-destructive">
+                    <LogOut className="h-4 w-4 mr-2" />
+                    Sair
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
             </div>
           </div>
         </div>

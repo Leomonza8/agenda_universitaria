@@ -57,6 +57,9 @@ export function ListaTarefas({ tarefas, disciplinas, disciplinaFiltro, onUpdate 
     if (!titulo.trim() || !disciplinaId) return
     setLoading(true)
 
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) return
+
     const payload = {
       titulo: titulo.trim(),
       descricao: descricao.trim() || null,
@@ -64,6 +67,7 @@ export function ListaTarefas({ tarefas, disciplinas, disciplinaFiltro, onUpdate 
       data_entrega: dataEntrega || null,
       prioridade,
       concluida: false,
+      user_id: user.id,
     }
 
     const { error } = await supabase.from('tarefas').insert(payload)
@@ -117,12 +121,17 @@ export function ListaTarefas({ tarefas, disciplinas, disciplinaFiltro, onUpdate 
   const handleCriarRevisao = async () => {
     if (!revisaoTarefa) return
     setRevisaoLoading(true)
+
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) return
+
     await supabase.from('revisoes').insert({
       tarefas_id: revisaoTarefa.id,
       titulo: revisaoTitulo.trim() || null,
       data_revisao: revisaoData,
       tempo_estimado: revisaoTempo,
       status: 'nao_iniciada',
+      user_id: user.id,
     })
     setRevisaoLoading(false)
     setRevisaoTarefa(null)

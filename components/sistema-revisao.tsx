@@ -65,12 +65,16 @@ export function SistemaRevisao() {
   const handleAddRevisao = async () => {
     if (!novaRevisao.tarefas_id) return
 
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) return
+
     const { error } = await supabase.from('revisoes').insert([{
       tarefas_id: novaRevisao.tarefas_id,
       titulo: novaRevisao.titulo.trim() || null,
       data_revisao: novaRevisao.data_revisao,
       tempo_estimado: novaRevisao.tempo_estimado,
       status: 'nao_iniciada',
+      user_id: user.id,
     }])
 
     if (!error) {

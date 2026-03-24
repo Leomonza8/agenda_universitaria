@@ -35,23 +35,21 @@ export function AnotacoesAula({ anotacoes, disciplinas, disciplinaFiltro, onUpda
     if (!conteudo.trim() || !disciplinaId) return
     setLoading(true)
 
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) return
+
     const payload = {
       conteudo: conteudo.trim(),
       disciplina_id: disciplinaId,
       data: dataAnotacao,
+      user_id: user.id,
     }
 
-    console.log('[v0] Inserindo anotação:', payload)
-    const { error, data: insertedData } = await supabase.from('anotacoes').insert(payload).select()
+    const { error } = await supabase.from('anotacoes').insert(payload)
 
     setLoading(false)
 
-    if (error) {
-      console.log('[v0] Erro ao inserir anotação:', error)
-      return
-    }
-
-    console.log('[v0] Anotação inserida com sucesso:', insertedData)
+    if (error) return
 
     setConteudo('')
     setDisciplinaId('')
