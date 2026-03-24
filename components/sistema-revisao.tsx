@@ -22,6 +22,7 @@ export function SistemaRevisao() {
 
   const [novaRevisao, setNovaRevisao] = useState({
     tarefas_id: '',
+    titulo: '',
     data_revisao: format(new Date(), 'yyyy-MM-dd'),
     tempo_estimado: 30,
   })
@@ -38,7 +39,7 @@ export function SistemaRevisao() {
       supabase
         .from('tarefas')
         .select('*, disciplina:disciplinas(*)')
-        .eq('concluida', false)
+        .order('concluida', { ascending: true })
         .order('titulo'),
     ])
 
@@ -59,6 +60,7 @@ export function SistemaRevisao() {
       .insert([
         {
           tarefas_id: novaRevisao.tarefas_id,
+          titulo: novaRevisao.titulo.trim() || null,
           data_revisao: novaRevisao.data_revisao,
           tempo_estimado: novaRevisao.tempo_estimado,
           status: 'nao_iniciada',
@@ -68,6 +70,7 @@ export function SistemaRevisao() {
     if (!error) {
       setNovaRevisao({
         tarefas_id: '',
+        titulo: '',
         data_revisao: format(new Date(), 'yyyy-MM-dd'),
         tempo_estimado: 30,
       })
@@ -199,11 +202,19 @@ export function SistemaRevisao() {
                 <SelectContent>
                   {tarefas.map(t => (
                     <SelectItem key={t.id} value={t.id}>
-                      {t.titulo} ({t.disciplina?.codigo})
+                      {t.concluida ? '[Concluída] ' : ''}{t.titulo} ({t.disciplina?.codigo})
                     </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
+            </div>
+            <div>
+              <label className="text-sm font-medium">Nome da revisão (opcional)</label>
+              <Input
+                value={novaRevisao.titulo}
+                onChange={(e) => setNovaRevisao({ ...novaRevisao, titulo: e.target.value })}
+                placeholder="Ex: Revisão de conceitos, Exercícios práticos..."
+              />
             </div>
             <div>
               <label className="text-sm font-medium">Data da Revisão</label>
@@ -277,6 +288,9 @@ export function SistemaRevisao() {
                 <div className="flex flex-col sm:flex-row sm:items-center gap-3">
                   <div className="flex-1 min-w-0">
                     <p className="font-medium text-sm">{r.tarefa?.titulo}</p>
+                    {r.titulo && (
+                      <p className="text-xs text-muted-foreground italic mt-0.5">{r.titulo}</p>
+                    )}
                     <div className="flex items-center gap-2 mt-1">
                       <Badge variant="outline" className="text-xs">
                         {r.tarefa?.disciplina?.codigo}

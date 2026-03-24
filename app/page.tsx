@@ -6,13 +6,13 @@ import { Disciplina, Horario, Tarefa, Anotacao, DIAS_SEMANA } from '@/lib/types'
 import { GradeHorarios } from '@/components/grade-horarios'
 import { ListaTarefas } from '@/components/lista-tarefas'
 import { AnotacoesAula } from '@/components/anotacoes-aula'
-import { CalendarioIntegrado } from '@/components/calendario-integrado'
+import { CalendarioSemanal } from '@/components/calendario-semanal'
 import { SistemaRevisao } from '@/components/sistema-revisao'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { CalendarDays, BookOpen, CheckSquare, Clock, BookMarked } from 'lucide-react'
+import { CalendarDays, BookOpen, CheckSquare } from 'lucide-react'
 
 export default function Home() {
   const [disciplinas, setDisciplinas] = useState<Disciplina[]>([])
@@ -214,7 +214,7 @@ export default function Home() {
 
           {/* Aba Calendário */}
           <TabsContent value="calendario" className="mt-6">
-            <CalendarioIntegrado />
+            <CalendarioSemanal />
           </TabsContent>
 
           {/* Aba Revisão */}
