@@ -51,11 +51,13 @@ export default function Home() {
   const fetchData = useCallback(async () => {
     if (!user) return
     
-    const [disciplinasRes, horariosRes, tarefasRes, anotacoesRes] = await Promise.all([
-      supabase.from('disciplinas').select('*').eq('user_id', user.userId).order('codigo'),
+    const [disciplinasRes, horariosRes, tarefasRes, anotacoesRes, revsoesRes] = await Promise.all([
+      // Buscar disciplinas públicas + disciplinas do usuário
+      supabase.from('disciplinas').select('*').or(`user_id.is.null,user_id.eq.${user.userId}`).order('codigo'),
       supabase.from('horarios').select('*, disciplina:disciplinas(*)').eq('user_id', user.userId).order('hora_inicio'),
       supabase.from('tarefas').select('*, disciplina:disciplinas(*)').eq('user_id', user.userId).order('data_entrega', { ascending: true, nullsFirst: false }),
       supabase.from('anotacoes').select('*, disciplina:disciplinas(*)').eq('user_id', user.userId).order('data', { ascending: false }),
+      supabase.from('revisoes').select('*, tarefa:tarefas(*)').eq('user_id', user.userId).order('data_revisao'),
     ])
 
     if (disciplinasRes.data) setDisciplinas(disciplinasRes.data)

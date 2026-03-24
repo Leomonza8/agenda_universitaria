@@ -27,6 +27,7 @@ interface DisciplinaComTipo extends Disciplina {
 interface Props {
   disciplinas: DisciplinaComTipo[]
   onUpdate: () => void
+  user?: any
 }
 
 const TIPO_LABEL: Record<TipoDisciplina, string> = {
@@ -41,11 +42,15 @@ const TIPO_COLOR: Record<TipoDisciplina, string> = {
   extensao: 'bg-emerald-500/10 text-emerald-600',
 }
 
-export function GerenciarDisciplinas({ disciplinas, onUpdate }: Props) {
+export function GerenciarDisciplinas({ disciplinas, onUpdate, user }: Props) {
   const supabase = createClient()
   const [dialogOpen, setDialogOpen] = useState(false)
   const [editando, setEditando] = useState<DisciplinaComTipo | null>(null)
   const [saving, setSaving] = useState(false)
+
+  // Separar disciplinas públicas (sem user_id) e privadas (com user_id)
+  const disciplinasPublicas = disciplinas.filter(d => !d.user_id)
+  const disciplinasPrivadas = disciplinas.filter(d => d.user_id === user?.userId)
 
   const [form, setForm] = useState({
     codigo: '',
@@ -156,24 +161,87 @@ export function GerenciarDisciplinas({ disciplinas, onUpdate }: Props) {
   )
 
   return (
-    <div className="space-y-5">
-      <div className="flex items-center justify-between">
-        <p className="text-sm text-muted-foreground">{disciplinas.length} disciplina(s) cadastrada(s)</p>
-        <Button onClick={abrirNova} size="sm">
-          <Plus className="h-4 w-4 mr-1" />
-          Nova Disciplina
-        </Button>
-      </div>
-
-      {disciplinas.length === 0 && (
-        <div className="text-center py-8 text-muted-foreground text-sm">
-          Nenhuma disciplina cadastrada ainda.
+    <div className="space-y-6">
+      {/* Disciplinas Públicas (Obrigatórias) */}
+      {disciplinasPublicas.length > 0 && (
+        <div className="space-y-3">
+          <div className="flex items-center gap-2">
+            <BookOpen className="h-4 w-4 text-primary" />
+            <h3 className="font-semibold text-sm">Disciplinas Disponíveis</h3>
+            <Badge variant="secondary" className="text-xs">{disciplinasPublicas.length}</Badge>
+          </div>
+          <div className="space-y-2">
+            {disciplinasPublicas.map(d => (
+              <Card key={d.id} className="bg-muted/30">
+                <CardContent className="p-3">
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2">
+                        <div className="w-3 h-3 rounded-full flex-shrink-0" style={{ backgroundColor: d.cor }} />
+                        <span className="font-medium text-sm truncate">{d.codigo}</span>
+                        <Badge variant="outline" className="text-xs ml-auto">{TIPO_LABEL[d.tipo as TipoDisciplina]}</Badge>
+                      </div>
+                      <p className="text-xs text-muted-foreground mt-1 line-clamp-2">{d.nome}</p>
+                      {d.professor && <p className="text-xs text-muted-foreground">Prof: {d.professor}</p>}
+                      {d.local && <p className="text-xs text-muted-foreground">Local: {d.local}</p>}
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+          <p className="text-xs text-muted-foreground">💡 Arraste estas disciplinas na aba "Minha Grade" para adicionar aos seus horários</p>
         </div>
       )}
 
-      {renderLista(obrigatorias, 'Obrigatorias', <BookOpen className="h-4 w-4 text-muted-foreground" />)}
-      {renderLista(optativas, 'Optativas', <BookOpen className="h-4 w-4 text-amber-500" />)}
-      {renderLista(extensoes, 'Extensao', <FlaskConical className="h-4 w-4 text-emerald-500" />)}
+      {/* Disciplinas Privadas do Usuário */}
+      {disciplinasPrivadas.length > 0 && (
+        <div className="space-y-3">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <BookOpen className="h-4 w-4 text-amber-500" />
+              <h3 className="font-semibold text-sm">Minhas Disciplinas</h3>
+              <Badge variant="secondary" className="text-xs">{disciplinasPrivadas.length}</Badge>
+            </div>
+            <Button onClick={abrirNova} size="sm">
+              <Plus className="h-4 w-4 mr-1" />
+              Nova
+            </Button>
+          </div>
+          <div className="space-y-2">
+            {disciplinasPrivadas.map(d => (
+              <Card key={d.id}>
+                <CardContent className="p-3">
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2">
+                        <div className="w-3 h-3 rounded-full flex-shrink-0" style={{ backgroundColor: d.cor }} />
+                        <span className="font-medium text-sm truncate">{d.codigo}</span>
+                        <Badge variant="outline" className="text-xs">{TIPO_LABEL[d.tipo as TipoDisciplina]}</Badge>
+                      </div>
+                      <p className="text-xs text-muted-foreground mt-1 line-clamp-2">{d.nome}</p>
+                    </div>
+                    <div className="flex gap-1 flex-shrink-0">
+                      <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => abrirEdicao(d)}>
+                        <Pencil className="h-3.5 w-3.5" />
+                      </Button>
+                      <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive" onClick={() => handleExcluir(d.id)}>
+                        <Trash2 className="h-3.5 w-3.5" />
+                      </Button>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {disciplinasPublicas.length === 0 && disciplinasPrivadas.length === 0 && (
+        <div className="text-center py-8 text-muted-foreground text-sm">
+          Nenhuma disciplina disponível
+        </div>
+      )}
 
       <Dialog open={dialogOpen} onOpenChange={open => { if (!open) setDialogOpen(false) }}>
         <DialogContent className="max-w-sm">

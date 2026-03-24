@@ -31,41 +31,49 @@ export function GradeHorarios({ horarios, onSelectDisciplina }: GradeHorariosPro
           </tr>
         </thead>
         <tbody>
-          {horasUnicas.map(hora => (
-            <tr key={hora}>
-              <td className="border border-border bg-muted/50 p-2 text-center font-medium whitespace-nowrap">
-                {hora}
+          {horasUnicas.length === 0 ? (
+            <tr>
+              <td colSpan={6} className="border border-border p-4 text-center text-muted-foreground">
+                Arraste disciplinas na aba "Minha Grade" para criar seu horário
               </td>
-              {diasUteis.map(dia => {
-                const aula = getAulaPorDiaHora(dia, hora)
-                return (
-                  <td
-                    key={`${dia}-${hora}`}
-                    className={cn(
-                      'border border-border p-2 text-center transition-colors',
-                      aula && 'cursor-pointer hover:opacity-80'
-                    )}
-                    style={aula ? { backgroundColor: aula.disciplina?.cor + '20' } : undefined}
-                    onClick={() => aula && onSelectDisciplina(aula.disciplina_id)}
-                  >
-                    {aula && (
-                      <div className="flex flex-col gap-0.5">
-                        <span
-                          className="font-medium text-xs leading-tight"
-                          style={{ color: aula.disciplina?.cor }}
-                        >
-                          {aula.disciplina?.codigo}
-                        </span>
-                        <span className="text-[10px] text-muted-foreground truncate max-w-[100px]">
-                          {aula.local}
-                        </span>
-                      </div>
-                    )}
-                  </td>
-                )
-              })}
             </tr>
-          ))}
+          ) : (
+            horasUnicas.map(hora => (
+              <tr key={hora}>
+                <td className="border border-border bg-muted/50 p-2 text-center font-medium whitespace-nowrap">
+                  {hora}
+                </td>
+                {diasUteis.map(dia => {
+                  const aula = getAulaPorDiaHora(dia, hora)
+                  return (
+                    <td
+                      key={`${dia}-${hora}`}
+                      className={cn(
+                        'border border-border p-2 text-center transition-colors',
+                        aula && 'cursor-pointer hover:opacity-80'
+                      )}
+                      style={aula ? { backgroundColor: aula.disciplina?.cor + '20' } : undefined}
+                      onClick={() => aula && onSelectDisciplina(aula.disciplina_id)}
+                    >
+                      {aula && (
+                        <div className="flex flex-col gap-0.5">
+                          <span
+                            className="font-medium text-xs leading-tight"
+                            style={{ color: aula.disciplina?.cor }}
+                          >
+                            {aula.disciplina?.codigo}
+                          </span>
+                          <span className="text-[10px] text-muted-foreground truncate max-w-[100px]">
+                            {aula.local}
+                          </span>
+                        </div>
+                      )}
+                    </td>
+                  )
+                })}
+              </tr>
+            ))
+          )}
         </tbody>
       </table>
     </div>
