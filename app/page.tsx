@@ -19,6 +19,7 @@ import type { User as SupabaseUser } from '@supabase/supabase-js'
 
 export default function Home() {
   const [user, setUser] = useState<SupabaseUser | null>(null)
+  const [username, setUsername] = useState<string | null>(null)
   const [isAdmin, setIsAdmin] = useState(false)
   const [disciplinas, setDisciplinas] = useState<Disciplina[]>([])
   const [horarios, setHorarios] = useState<Horario[]>([])
@@ -38,14 +39,15 @@ export default function Home() {
     }
     setUser(user)
 
-    // Check if admin
+    // Check if admin and get username
     const { data: profile } = await supabase
       .from('profiles')
-      .select('is_admin')
+      .select('is_admin, username')
       .eq('id', user.id)
       .single()
 
     setIsAdmin(profile?.is_admin ?? false)
+    setUsername(profile?.username ?? null)
     return true
   }, [supabase, router])
 
@@ -129,7 +131,7 @@ export default function Home() {
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end">
                   <div className="px-2 py-1.5 text-sm">
-                    <p className="font-medium">{user?.email}</p>
+                    <p className="font-medium">@{username}</p>
                     {isAdmin && (
                       <p className="text-xs text-muted-foreground">Administrador</p>
                     )}

@@ -14,6 +14,7 @@ interface Profile {
   id: string
   nome: string | null
   email: string | null
+  username: string | null
   is_admin: boolean
   created_at: string
 }
@@ -28,7 +29,7 @@ export default function AdminPage() {
 
   // form fields
   const [novoNome, setNovoNome] = useState('')
-  const [novoEmail, setNovoEmail] = useState('')
+  const [novoUsername, setNovoUsername] = useState('')
   const [novaSenha, setNovaSenha] = useState('')
 
   const router = useRouter()
@@ -71,55 +72,55 @@ export default function AdminPage() {
   }
 
   const handleCriarUsuario = async () => {
-    if (!novoEmail || !novaSenha || !novoNome) return
+    if (!novoUsername || !novaSenha || !novoNome) return
     setSaving(true)
     setError(null)
 
-    // Create user via Supabase Auth
-    const { data: authData, error: authError } = await supabase.auth.admin.createUser({
-      email: novoEmail,
+    const username = novoUsername.toLowerCase().trim()
+    const email = `${username}@agenda.local`
+
+    // Verificar se username ja existe
+    const { data: existingUser } = await supabase
+      .from('profiles')
+      .select('id')
+      .eq('username', username)
+      .single()
+
+    if (existingUser) {
+      setError('Este nome de usuario ja existe')
+      setSaving(false)
+      return
+    }
+
+    // Create user via signUp
+    const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
+      email,
       password: novaSenha,
-      email_confirm: true,
-      user_metadata: { nome: novoNome },
+      options: {
+        data: { nome: novoNome, username },
+        emailRedirectTo: `${window.location.origin}/auth/login`,
+      },
     })
 
-    if (authError) {
-      // Try alternative: sign up normally
-      const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
-        email: novoEmail,
-        password: novaSenha,
-        options: {
-          data: { nome: novoNome },
-          emailRedirectTo: `${window.location.origin}/auth/login`,
-        },
-      })
+    if (signUpError) {
+      setError(signUpError.message)
+      setSaving(false)
+      return
+    }
 
-      if (signUpError) {
-        setError(signUpError.message)
-        setSaving(false)
-        return
-      }
-
-      if (signUpData.user) {
-        // Insert profile manually
-        await supabase.from('profiles').insert({
-          id: signUpData.user.id,
-          nome: novoNome,
-          email: novoEmail,
-          is_admin: false,
-        })
-      }
-    } else if (authData.user) {
-      await supabase.from('profiles').insert({
-        id: authData.user.id,
+    if (signUpData.user) {
+      // Insert profile manually (trigger may not fire immediately)
+      await supabase.from('profiles').upsert({
+        id: signUpData.user.id,
         nome: novoNome,
-        email: novoEmail,
+        email,
+        username,
         is_admin: false,
       })
     }
 
     setNovoNome('')
-    setNovoEmail('')
+    setNovoUsername('')
     setNovaSenha('')
     setDialogOpen(false)
     setSaving(false)
@@ -137,7 +138,6 @@ export default function AdminPage() {
   const deleteUser = async (profileId: string) => {
     if (!confirm('Tem certeza que deseja excluir este usuario?')) return
     
-    // Delete profile (cascade will handle auth.users if configured)
     await supabase.from('profiles').delete().eq('id', profileId)
     fetchProfiles()
   }
@@ -191,11 +191,11 @@ export default function AdminPage() {
                 >
                   <div className="flex items-center gap-3">
                     <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center text-primary font-medium">
-                      {p.nome?.charAt(0).toUpperCase() || p.email?.charAt(0).toUpperCase() || '?'}
+                      {p.nome?.charAt(0).toUpperCase() || p.username?.charAt(0).toUpperCase() || '?'}
                     </div>
                     <div>
                       <p className="font-medium">{p.nome || 'Sem nome'}</p>
-                      <p className="text-sm text-muted-foreground">{p.email}</p>
+                      <p className="text-sm text-muted-foreground">@{p.username}</p>
                     </div>
                     {p.is_admin && (
                       <Badge variant="secondary">
@@ -258,13 +258,13 @@ export default function AdminPage() {
               />
             </div>
             <div className="space-y-1">
-              <label className="text-sm font-medium">Email</label>
+              <label className="text-sm font-medium">Nome de usuario</label>
               <Input
-                type="email"
-                value={novoEmail}
-                onChange={e => setNovoEmail(e.target.value)}
-                placeholder="email@exemplo.com"
+                value={novoUsername}
+                onChange={e => setNovoUsername(e.target.value.toLowerCase().replace(/[^a-z0-9]/g, ''))}
+                placeholder="nome_usuario"
               />
+              <p className="text-xs text-muted-foreground">Apenas letras e numeros, sem espacos</p>
             </div>
             <div className="space-y-1">
               <label className="text-sm font-medium">Senha</label>
@@ -279,7 +279,7 @@ export default function AdminPage() {
               <Button variant="outline" onClick={() => setDialogOpen(false)}>
                 Cancelar
               </Button>
-              <Button onClick={handleCriarUsuario} disabled={saving || !novoEmail || !novaSenha || !novoNome}>
+              <Button onClick={handleCriarUsuario} disabled={saving || !novoUsername || !novaSenha || !novoNome}>
                 {saving ? 'Criando...' : 'Criar Usuario'}
               </Button>
             </div>
