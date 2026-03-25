@@ -552,7 +552,7 @@ function DayCard({ col, isDragOver, onDragOver, onDrop, onDragLeave, onAddClick,
                 {/* Botao remover */}
                 <button
                   onClick={e => { e.stopPropagation(); onDeleteItem({ tipo: item.tipo, id: item.id, titulo: item.titulo }) }}
-                  className="w-5 h-5 rounded border border-destructive/60 transition-all flex items-center justify-center opacity-0 group-hover/item:opacity-100 hover:bg-destructive/20 text-destructive"
+                  className="w-5 h-5 rounded border border-destructive/60 transition-all flex items-center justify-center text-destructive hover:bg-destructive/20 sm:opacity-0 sm:group-hover/item:opacity-100"
                   title="Remover"
                 >
                   <Trash2 className="h-3 w-3" />
