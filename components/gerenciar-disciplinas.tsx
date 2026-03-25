@@ -81,13 +81,16 @@ export function GerenciarDisciplinas({ disciplinas, onUpdate, user }: Props) {
   }
 
   const handleSalvar = async () => {
-    if (!form.codigo.trim() || !form.nome.trim()) return
+    // Código é obrigatório apenas para disciplinas/optativas
+    const codigoObrigatorio = form.tipo !== 'extensao'
+    if (codigoObrigatorio && !form.codigo.trim()) return
+    if (!form.nome.trim()) return
     const session = getSession()
     if (!session) return
 
     setSaving(true)
     const payload = {
-      codigo: form.codigo.trim().toUpperCase(),
+      codigo: form.codigo.trim().toUpperCase() || null,
       nome: form.nome.trim(),
       professor: form.professor.trim() || null,
       local: form.local.trim() || null,
@@ -254,17 +257,23 @@ export function GerenciarDisciplinas({ disciplinas, onUpdate, user }: Props) {
           <DialogHeader>
             <DialogTitle>{editando ? 'Editar Disciplina' : 'Nova Disciplina'}</DialogTitle>
             <DialogDescription>
-              Preencha os dados da disciplina. Codigo e nome sao obrigatorios.
+              {form.tipo === 'extensao' 
+                ? 'Preencha os dados da extensao. Codinome e nome sao opcionais.'
+                : 'Preencha os dados da disciplina. Codigo e nome sao obrigatorios.'
+              }
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-3 pt-1">
             <div className="grid grid-cols-2 gap-2">
               <div className="space-y-1">
-                <label className="text-sm font-medium">Codigo *</label>
+                <label className="text-sm font-medium flex items-center gap-1">
+                  {form.tipo === 'extensao' ? 'Codinome' : 'Codigo'}
+                  {form.tipo !== 'extensao' && <span className="text-destructive">*</span>}
+                </label>
                 <Input
                   value={form.codigo}
                   onChange={e => setForm(f => ({ ...f, codigo: e.target.value }))}
-                  placeholder="MAT001"
+                  placeholder={form.tipo === 'extensao' ? 'Opcional' : 'MAT001'}
                 />
               </div>
               <div className="space-y-1">
@@ -329,7 +338,7 @@ export function GerenciarDisciplinas({ disciplinas, onUpdate, user }: Props) {
               <Button
                 className="flex-1"
                 onClick={handleSalvar}
-                disabled={saving || !form.codigo.trim() || !form.nome.trim()}
+                disabled={saving || !form.nome.trim() || (form.tipo !== 'extensao' && !form.codigo.trim())}
               >
                 {saving ? 'Salvando...' : 'Salvar'}
               </Button>
