@@ -17,7 +17,9 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
-import { CalendarDays, BookOpen, CheckSquare, User, LogOut, Shield, Settings } from 'lucide-react'
+import { BookOpen, CheckSquare, User, LogOut, Shield, Settings } from 'lucide-react'
+import { parseISO, format } from 'date-fns'
+import { ptBR } from 'date-fns/locale'
 
 interface SessionUser {
   userId: string
@@ -88,12 +90,7 @@ export default function Home() {
     ? disciplinas.find(d => d.id === disciplinaSelecionada)
     : null
 
-  // Calcular contadores
-  const hoje = new Date().getDay()
-  // Contar disciplinas únicas com aula hoje (não slots duplicados)
-  const disciplinasHoje = new Set(horarios.filter(h => h.dia_semana === hoje).map(h => h.disciplina_id))
-  const aulasHoje = disciplinasHoje.size
-  // Contar tarefas não concluídas + revisões não concluídas
+  // Calcular pendentes (tarefas + revisoes)
   const tarefasPendentes = tarefas.filter(t => !t.concluida).length
   const revisoesPendentes = revisoes.filter(r => r.status !== 'concluida').length
   const totalPendentes = tarefasPendentes + revisoesPendentes
@@ -126,20 +123,12 @@ export default function Home() {
               </div>
             </div>
             <div className="flex items-center gap-3">
-              <div className="hidden sm:flex items-center gap-2">
-                {totalPendentes > 0 && (
-                  <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-muted/60 text-xs font-medium text-muted-foreground">
-                    <CheckSquare className="h-3.5 w-3.5" />
-                    <span>{totalPendentes} pendentes</span>
-                  </div>
-                )}
-                {aulasHoje > 0 && (
-                  <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-primary/10 text-xs font-medium text-primary">
-                    <CalendarDays className="h-3.5 w-3.5" />
-                    <span>{aulasHoje} {aulasHoje === 1 ? 'aula' : 'aulas'} hoje</span>
-                  </div>
-                )}
-              </div>
+              {totalPendentes > 0 && (
+                <div className="hidden sm:flex items-center gap-1.5 px-2.5 py-1.5 rounded-md bg-amber-500/10 border border-amber-500/20 text-xs font-medium text-amber-600 dark:text-amber-400">
+                  <CheckSquare className="h-3.5 w-3.5" />
+                  <span>{totalPendentes} pendente{totalPendentes > 1 ? 's' : ''}</span>
+                </div>
+              )}
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <Button variant="ghost" size="sm" className="gap-2 font-medium">
@@ -285,11 +274,9 @@ export default function Home() {
                           <div className="flex-1 min-w-0">
                             <p className="font-medium text-sm truncate">{t.titulo}</p>
                             <p className="text-xs text-muted-foreground mt-0.5">
-                              {t.data_entrega ? new Date(t.data_entrega).toLocaleDateString('pt-BR', {
-                                weekday: 'short',
-                                day: 'numeric',
-                                month: 'short'
-                              }) : 'Sem data'}
+                              {t.data_entrega 
+                                ? format(parseISO(t.data_entrega), "EEE, d 'de' MMM", { locale: ptBR })
+                                : 'Sem data'}
                             </p>
                           </div>
                         </div>
