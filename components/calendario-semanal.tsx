@@ -71,11 +71,14 @@ export function CalendarioSemanal({ onUpdate }: { onUpdate?: () => void }) {
   const [confirmDelete, setConfirmDelete] = useState<{ tipo: 'tarefa' | 'revisao'; id: string; titulo: string } | null>(null)
 
   const fetchData = useCallback(async () => {
+    const session = getSession()
+    if (!session) return
+
     setLoading(true)
     const [tRes, rRes, dRes] = await Promise.all([
-      supabase.from('tarefas').select('*, disciplina:disciplinas(*)').order('data_entrega', { ascending: true, nullsFirst: false }),
-      supabase.from('revisoes').select('*, tarefa:tarefas(*, disciplina:disciplinas(*))').order('data_revisao', { ascending: true }),
-      supabase.from('disciplinas').select('*').order('codigo'),
+      supabase.from('tarefas').select('*, disciplina:disciplinas(*)').eq('user_id', session.userId).order('data_entrega', { ascending: true, nullsFirst: false }),
+      supabase.from('revisoes').select('*, tarefa:tarefas(*, disciplina:disciplinas(*))').eq('user_id', session.userId).order('data_revisao', { ascending: true }),
+      supabase.from('disciplinas').select('*').or(`user_id.is.null,user_id.eq.${session.userId}`).order('codigo'),
     ])
     if (tRes.data) setTarefas(tRes.data)
     if (rRes.data) setRevisoes(rRes.data)

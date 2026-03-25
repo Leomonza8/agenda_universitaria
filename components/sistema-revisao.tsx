@@ -41,15 +41,20 @@ export function SistemaRevisao() {
   const supabase = createClient()
 
   const fetchData = useCallback(async () => {
+    const session = getSession()
+    if (!session) return
+
     setLoading(true)
     const [revisoesRes, tarefasRes] = await Promise.all([
       supabase
         .from('revisoes')
         .select('*, tarefa:tarefas(*, disciplina:disciplinas(*))')
+        .eq('user_id', session.userId)
         .order('data_revisao', { ascending: true }),
       supabase
         .from('tarefas')
         .select('*, disciplina:disciplinas(*)')
+        .eq('user_id', session.userId)
         .order('concluida', { ascending: true })
         .order('titulo'),
     ])
