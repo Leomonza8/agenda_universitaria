@@ -145,6 +145,12 @@ export function CalendarioSemanal({ onUpdate }: { onUpdate?: () => void }) {
     setTarefas(prev => prev.map(t => t.id === id ? { ...t, concluida: !concluida } : t))
   }
 
+  const handleToggleRevisao = async (id: string, status: string) => {
+    const novoStatus = status === 'concluida' ? 'nao_iniciada' : 'concluida'
+    await supabase.from('revisoes').update({ status: novoStatus }).eq('id', id)
+    setRevisoes(prev => prev.map(r => r.id === id ? { ...r, status: novoStatus } : r))
+  }
+
   const abrirDialogDia = (dateStr: string) => {
     setDialogDate(dateStr)
     setNovoTitulo('')
@@ -261,6 +267,7 @@ export function CalendarioSemanal({ onUpdate }: { onUpdate?: () => void }) {
           onDragLeave={() => setDragOverDay(null)}
           onAddClick={() => abrirDialogDia(selectedDateStr)}
           onToggleTarefa={handleToggleTarefa}
+          onToggleRevisao={handleToggleRevisao}
           onDragStart={handleDragStart}
           expanded
         />
@@ -280,6 +287,7 @@ export function CalendarioSemanal({ onUpdate }: { onUpdate?: () => void }) {
               onDragLeave={() => setDragOverDay(null)}
               onAddClick={() => abrirDialogDia(dateStr)}
               onToggleTarefa={handleToggleTarefa}
+              onToggleRevisao={handleToggleRevisao}
               onDragStart={handleDragStart}
             />
           )
@@ -361,11 +369,12 @@ interface DayCardProps {
   onDragLeave: () => void
   onAddClick: () => void
   onToggleTarefa: (id: string, concluida: boolean) => void
+  onToggleRevisao: (id: string, status: string) => void
   onDragStart: (e: React.DragEvent, tipo: 'tarefa' | 'revisao', id: string) => void
   expanded?: boolean
 }
 
-function DayCard({ col, isDragOver, onDragOver, onDrop, onDragLeave, onAddClick, onToggleTarefa, onDragStart, expanded }: DayCardProps) {
+function DayCard({ col, isDragOver, onDragOver, onDrop, onDragLeave, onAddClick, onToggleTarefa, onToggleRevisao, onDragStart, expanded }: DayCardProps) {
   const hoje = isToday(col.date)
 
   return (
@@ -419,7 +428,9 @@ function DayCard({ col, isDragOver, onDragOver, onDrop, onDragLeave, onAddClick,
             onDragStart={e => onDragStart(e, item.tipo, item.id)}
             className={cn(
               'rounded-lg px-2.5 py-2 cursor-grab active:cursor-grabbing select-none transition-all hover:shadow-sm',
-              item.tipo === 'tarefa' && item.concluida && 'opacity-50'
+              (item.tipo === 'tarefa' && item.concluida) || (item.tipo === 'revisao' && item.status === 'concluida')
+                ? 'opacity-50'
+                : ''
             )}
             style={{
               backgroundColor: item.cor + '15',
@@ -471,6 +482,22 @@ function DayCard({ col, isDragOver, onDragOver, onDrop, onDragLeave, onAddClick,
                   title={item.concluida ? 'Reabrir' : 'Concluir'}
                 >
                   {item.concluida && <Check className="h-3 w-3" />}
+                </button>
+              )}
+
+              {/* Botao concluir revisao */}
+              {item.tipo === 'revisao' && (
+                <button
+                  onClick={e => { e.stopPropagation(); onToggleRevisao(item.id, item.status) }}
+                  className={cn(
+                    'flex-shrink-0 w-5 h-5 rounded border transition-all flex items-center justify-center mt-0.5',
+                    item.status === 'concluida'
+                      ? 'bg-purple-500 border-purple-500 text-white'
+                      : 'border-border hover:border-purple-400 hover:bg-purple-50'
+                  )}
+                  title={item.status === 'concluida' ? 'Reabrir revisao' : 'Marcar como concluida'}
+                >
+                  {item.status === 'concluida' && <Check className="h-3 w-3" />}
                 </button>
               )}
             </div>
