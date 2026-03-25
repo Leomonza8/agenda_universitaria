@@ -3,6 +3,7 @@
 import { useEffect, useState, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
+import { getSession } from '@/lib/auth'
 import { Disciplina, Horario, DIAS_SEMANA } from '@/lib/types'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -80,8 +81,8 @@ export default function DisciplinasPage() {
     if (!codigo.trim() || !nome.trim()) return
     setSaving(true)
 
-    const { data: { user } } = await supabase.auth.getUser()
-    if (!user) {
+    const session = getSession()
+    if (!session) {
       setSaving(false)
       return
     }
@@ -101,7 +102,7 @@ export default function DisciplinasPage() {
         professor: professor.trim(),
         local: local.trim(),
         cor,
-        user_id: user.id,
+        user_id: session.userId,
       })
     }
 
@@ -128,8 +129,8 @@ export default function DisciplinasPage() {
     if (!selectedDisciplina) return
     setSaving(true)
 
-    const { data: { user } } = await supabase.auth.getUser()
-    if (!user) {
+    const session = getSession()
+    if (!session) {
       setSaving(false)
       return
     }
@@ -139,7 +140,7 @@ export default function DisciplinasPage() {
       dia_semana: parseInt(diaSemana),
       hora_inicio: horaInicio,
       hora_fim: horaFim,
-      user_id: user.id,
+      user_id: session.userId,
     })
 
     setSaving(false)

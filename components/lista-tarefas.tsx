@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { Tarefa, Disciplina, Prioridade } from '@/lib/types'
 import { createClient } from '@/lib/supabase/client'
+import { getSession } from '@/lib/auth'
 import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Input } from '@/components/ui/input'
@@ -11,7 +12,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog'
 import { Plus, Trash2, BookOpen, Pencil } from 'lucide-react'
-import { format } from 'date-fns'
+import { format, parseISO } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
 
 interface ListaTarefasProps {
@@ -57,8 +58,8 @@ export function ListaTarefas({ tarefas, disciplinas, disciplinaFiltro, onUpdate 
     if (!titulo.trim() || !disciplinaId) return
     setLoading(true)
 
-    const { data: { user } } = await supabase.auth.getUser()
-    if (!user) return
+    const session = getSession()
+    if (!session) return
 
     const payload = {
       titulo: titulo.trim(),
@@ -67,7 +68,7 @@ export function ListaTarefas({ tarefas, disciplinas, disciplinaFiltro, onUpdate 
       data_entrega: dataEntrega || null,
       prioridade,
       concluida: false,
-      user_id: user.id,
+      user_id: session.userId,
     }
 
     const { error } = await supabase.from('tarefas').insert(payload)
@@ -122,8 +123,8 @@ export function ListaTarefas({ tarefas, disciplinas, disciplinaFiltro, onUpdate 
     if (!revisaoTarefa) return
     setRevisaoLoading(true)
 
-    const { data: { user } } = await supabase.auth.getUser()
-    if (!user) return
+    const session = getSession()
+    if (!session) return
 
     await supabase.from('revisoes').insert({
       tarefas_id: revisaoTarefa.id,
@@ -131,7 +132,7 @@ export function ListaTarefas({ tarefas, disciplinas, disciplinaFiltro, onUpdate 
       data_revisao: revisaoData,
       tempo_estimado: revisaoTempo,
       status: 'nao_iniciada',
-      user_id: user.id,
+      user_id: session.userId,
     })
     setRevisaoLoading(false)
     setRevisaoTarefa(null)
@@ -179,7 +180,7 @@ export function ListaTarefas({ tarefas, disciplinas, disciplinaFiltro, onUpdate 
         )}
         {tarefa.data_entrega && (
           <p className="text-xs text-muted-foreground mt-1">
-            Entrega: {format(new Date(tarefa.data_entrega), "dd 'de' MMMM", { locale: ptBR })}
+            Entrega: {format(parseISO(tarefa.data_entrega), "dd 'de' MMMM", { locale: ptBR })}
           </p>
         )}
       </div>

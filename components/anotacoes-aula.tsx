@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { Anotacao, Disciplina } from '@/lib/types'
 import { createClient } from '@/lib/supabase/client'
+import { getSession } from '@/lib/auth'
 import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
@@ -35,14 +36,14 @@ export function AnotacoesAula({ anotacoes, disciplinas, disciplinaFiltro, onUpda
     if (!conteudo.trim() || !disciplinaId) return
     setLoading(true)
 
-    const { data: { user } } = await supabase.auth.getUser()
-    if (!user) return
+    const session = getSession()
+    if (!session) return
 
     const payload = {
       conteudo: conteudo.trim(),
       disciplina_id: disciplinaId,
       data: dataAnotacao,
-      user_id: user.id,
+      user_id: session.userId,
     }
 
     const { error } = await supabase.from('anotacoes').insert(payload)

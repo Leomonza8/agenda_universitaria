@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useCallback } from 'react'
 import { createClient } from '@/lib/supabase/client'
+import { getSession } from '@/lib/auth'
 import { Tarefa, Revisao } from '@/lib/types'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
@@ -20,15 +21,20 @@ export function CalendarioIntegrado() {
   const supabase = createClient()
 
   const fetchData = useCallback(async () => {
+    const session = getSession()
+    if (!session) return
+
     setLoading(true)
     const [tarefasRes, revisoesRes] = await Promise.all([
       supabase
         .from('tarefas')
         .select('*, disciplina:disciplinas(*)')
+        .eq('user_id', session.userId)
         .order('data_entrega', { ascending: true }),
       supabase
         .from('revisoes')
         .select('*, tarefa:tarefas(*, disciplina:disciplinas(*))')
+        .eq('user_id', session.userId)
         .order('data_revisao', { ascending: true }),
     ])
 

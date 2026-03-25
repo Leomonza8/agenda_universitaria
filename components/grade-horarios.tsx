@@ -110,19 +110,29 @@ export function GradeHorarios({ horarios, onSelectDisciplina }: GradeHorariosPro
                         onClick={() => horario && onSelectDisciplina(horario.disciplina_id)}
                       >
                         {horario?.disciplina && (
-                          <div className="flex flex-col items-center justify-center h-full gap-0.5">
+                          <div className="flex flex-col items-center justify-center h-full gap-0.5 px-0.5">
+                            {horario.disciplina.nome && (
+                              <span
+                                className="text-[9px] leading-tight font-medium opacity-70 text-center line-clamp-2"
+                                style={{ color: horario.disciplina.cor }}
+                              >
+                                {horario.disciplina.nome}
+                              </span>
+                            )}
                             <span
                               className="font-bold text-[11px] leading-none"
                               style={{ color: horario.disciplina.cor }}
                             >
                               {horario.disciplina.codigo}
                             </span>
-                            <span
-                              className="text-[10px] opacity-70"
-                              style={{ color: horario.disciplina.cor }}
-                            >
-                              {horario.hora_inicio} - {horario.hora_fim}
-                            </span>
+                            {rowSpan > 1 && (
+                              <span
+                                className="text-[8px] opacity-60 mt-0.5"
+                                style={{ color: horario.disciplina.cor }}
+                              >
+                                {horario.hora_inicio}–{horario.hora_fim}
+                              </span>
+                            )}
                           </div>
                         )}
                       </td>
