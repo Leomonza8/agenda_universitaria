@@ -5,7 +5,7 @@ import { createClient } from '@/lib/supabase/client'
 import { getSession } from '@/lib/auth'
 import { Tarefa, Revisao, Disciplina } from '@/lib/types'
 import { Button } from '@/components/ui/button'
-import { ChevronLeft, ChevronRight, Plus, Check } from 'lucide-react'
+import { ChevronLeft, ChevronRight, Plus, Check, Trash2 } from 'lucide-react'
 import {
   format,
   startOfWeek,
@@ -18,6 +18,7 @@ import {
 } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog'
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog'
 import { Input } from '@/components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { cn } from '@/lib/utils'
@@ -66,6 +67,8 @@ export function CalendarioSemanal({ onUpdate }: { onUpdate?: () => void }) {
   const [novaDisciplinaId, setNovaDisciplinaId] = useState('')
   const [novaPrioridade, setNovaPrioridade] = useState('media')
   const [saving, setSaving] = useState(false)
+
+  const [confirmDelete, setConfirmDelete] = useState<{ tipo: 'tarefa' | 'revisao'; id: string; titulo: string } | null>(null)
 
   const fetchData = useCallback(async () => {
     setLoading(true)
@@ -149,6 +152,19 @@ export function CalendarioSemanal({ onUpdate }: { onUpdate?: () => void }) {
     const novoStatus = status === 'concluida' ? 'nao_iniciada' : 'concluida'
     await supabase.from('revisoes').update({ status: novoStatus }).eq('id', id)
     setRevisoes(prev => prev.map(r => r.id === id ? { ...r, status: novoStatus } : r))
+  }
+
+  const handleConfirmarDelete = async () => {
+    if (!confirmDelete) return
+    if (confirmDelete.tipo === 'tarefa') {
+      await supabase.from('tarefas').delete().eq('id', confirmDelete.id)
+      setTarefas(prev => prev.filter(t => t.id !== confirmDelete.id))
+    } else {
+      await supabase.from('revisoes').delete().eq('id', confirmDelete.id)
+      setRevisoes(prev => prev.filter(r => r.id !== confirmDelete.id))
+    }
+    onUpdate?.()
+    setConfirmDelete(null)
   }
 
   const abrirDialogDia = (dateStr: string) => {
@@ -268,6 +284,7 @@ export function CalendarioSemanal({ onUpdate }: { onUpdate?: () => void }) {
           onAddClick={() => abrirDialogDia(selectedDateStr)}
           onToggleTarefa={handleToggleTarefa}
           onToggleRevisao={handleToggleRevisao}
+          onDeleteItem={setConfirmDelete}
           onDragStart={handleDragStart}
           expanded
         />
@@ -288,11 +305,37 @@ export function CalendarioSemanal({ onUpdate }: { onUpdate?: () => void }) {
               onAddClick={() => abrirDialogDia(dateStr)}
               onToggleTarefa={handleToggleTarefa}
               onToggleRevisao={handleToggleRevisao}
+              onDeleteItem={setConfirmDelete}
               onDragStart={handleDragStart}
             />
           )
         })}
       </div>
+
+      {/* AlertDialog confirmacao de exclusao */}
+      <AlertDialog open={!!confirmDelete} onOpenChange={open => !open && setConfirmDelete(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Remover item</AlertDialogTitle>
+            <AlertDialogDescription>
+              Tem certeza que deseja remover{' '}
+              <span className="font-semibold text-foreground">"{confirmDelete?.titulo}"</span>?
+              {confirmDelete?.tipo === 'tarefa'
+                ? ' A tarefa sera excluida permanentemente.'
+                : ' A revisao sera excluida permanentemente.'}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleConfirmarDelete}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              Remover
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       {/* Dialog nova tarefa */}
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
@@ -370,11 +413,12 @@ interface DayCardProps {
   onAddClick: () => void
   onToggleTarefa: (id: string, concluida: boolean) => void
   onToggleRevisao: (id: string, status: string) => void
+  onDeleteItem: (item: { tipo: 'tarefa' | 'revisao'; id: string; titulo: string }) => void
   onDragStart: (e: React.DragEvent, tipo: 'tarefa' | 'revisao', id: string) => void
   expanded?: boolean
 }
 
-function DayCard({ col, isDragOver, onDragOver, onDrop, onDragLeave, onAddClick, onToggleTarefa, onToggleRevisao, onDragStart, expanded }: DayCardProps) {
+function DayCard({ col, isDragOver, onDragOver, onDrop, onDragLeave, onAddClick, onToggleTarefa, onToggleRevisao, onDeleteItem, onDragStart, expanded }: DayCardProps) {
   const hoje = isToday(col.date)
 
   return (
@@ -427,7 +471,7 @@ function DayCard({ col, isDragOver, onDragOver, onDrop, onDragLeave, onAddClick,
             draggable
             onDragStart={e => onDragStart(e, item.tipo, item.id)}
             className={cn(
-              'rounded-lg px-2.5 py-2 cursor-grab active:cursor-grabbing select-none transition-all hover:shadow-sm',
+              'group/item rounded-lg px-2.5 py-2 cursor-grab active:cursor-grabbing select-none transition-all hover:shadow-sm',
               (item.tipo === 'tarefa' && item.concluida) || (item.tipo === 'revisao' && item.status === 'concluida')
                 ? 'opacity-50'
                 : ''
@@ -469,37 +513,48 @@ function DayCard({ col, isDragOver, onDragOver, onDrop, onDragLeave, onAddClick,
                 )}
               </div>
 
-              {/* Botao concluir tarefa */}
-              {item.tipo === 'tarefa' && (
-                <button
-                  onClick={e => { e.stopPropagation(); onToggleTarefa(item.id, item.concluida) }}
-                  className={cn(
-                    'flex-shrink-0 w-5 h-5 rounded border transition-all flex items-center justify-center mt-0.5',
-                    item.concluida
-                      ? 'bg-green-500 border-green-500 text-white'
-                      : 'border-border hover:border-primary/50 hover:bg-muted/50'
-                  )}
-                  title={item.concluida ? 'Reabrir' : 'Concluir'}
-                >
-                  {item.concluida && <Check className="h-3 w-3" />}
-                </button>
-              )}
+              <div className="flex items-center gap-1 flex-shrink-0 mt-0.5">
+                {/* Botao concluir tarefa */}
+                {item.tipo === 'tarefa' && (
+                  <button
+                    onClick={e => { e.stopPropagation(); onToggleTarefa(item.id, item.concluida) }}
+                    className={cn(
+                      'w-5 h-5 rounded border transition-all flex items-center justify-center',
+                      item.concluida
+                        ? 'bg-green-500 border-green-500 text-white'
+                        : 'border-border hover:border-green-400 hover:bg-green-50'
+                    )}
+                    title={item.concluida ? 'Reabrir' : 'Concluir'}
+                  >
+                    {item.concluida && <Check className="h-3 w-3" />}
+                  </button>
+                )}
 
-              {/* Botao concluir revisao */}
-              {item.tipo === 'revisao' && (
+                {/* Botao concluir revisao */}
+                {item.tipo === 'revisao' && (
+                  <button
+                    onClick={e => { e.stopPropagation(); onToggleRevisao(item.id, item.status) }}
+                    className={cn(
+                      'w-5 h-5 rounded border transition-all flex items-center justify-center',
+                      item.status === 'concluida'
+                        ? 'bg-purple-500 border-purple-500 text-white'
+                        : 'border-border hover:border-purple-400 hover:bg-purple-50'
+                    )}
+                    title={item.status === 'concluida' ? 'Reabrir revisao' : 'Marcar como concluida'}
+                  >
+                    {item.status === 'concluida' && <Check className="h-3 w-3" />}
+                  </button>
+                )}
+
+                {/* Botao remover */}
                 <button
-                  onClick={e => { e.stopPropagation(); onToggleRevisao(item.id, item.status) }}
-                  className={cn(
-                    'flex-shrink-0 w-5 h-5 rounded border transition-all flex items-center justify-center mt-0.5',
-                    item.status === 'concluida'
-                      ? 'bg-purple-500 border-purple-500 text-white'
-                      : 'border-border hover:border-purple-400 hover:bg-purple-50'
-                  )}
-                  title={item.status === 'concluida' ? 'Reabrir revisao' : 'Marcar como concluida'}
+                  onClick={e => { e.stopPropagation(); onDeleteItem({ tipo: item.tipo, id: item.id, titulo: item.titulo }) }}
+                  className="w-5 h-5 rounded border border-border transition-all flex items-center justify-center opacity-0 group-hover/item:opacity-100 hover:bg-destructive/10 hover:border-destructive/40 hover:text-destructive text-muted-foreground"
+                  title="Remover"
                 >
-                  {item.status === 'concluida' && <Check className="h-3 w-3" />}
+                  <Trash2 className="h-3 w-3" />
                 </button>
-              )}
+              </div>
             </div>
           </div>
         ))}
