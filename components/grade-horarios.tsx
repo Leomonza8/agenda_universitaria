@@ -1,34 +1,21 @@
 'use client'
 
 import { useState, useMemo } from 'react'
-import { Horario, DIAS_SEMANA } from '@/lib/types'
+import { Horario } from '@/lib/types'
 import { cn } from '@/lib/utils'
 import { ChevronDown, ChevronUp } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 
-const HORA_LIMITE = '18:00'
+const HORAS_DIA = [
+  '07:00', '07:30', '08:00', '08:30', '09:00', '09:30',
+  '10:00', '10:30', '11:00', '11:30', '12:00', '12:30',
+  '13:00', '13:30', '14:00', '14:30', '15:00', '15:30',
+  '16:00', '16:30', '17:00', '17:30',
+]
+const HORAS_NOTURNO = ['18:00', '18:30', '19:00', '19:30', '20:00', '20:30', '21:00', '21:30', '22:00']
+const TODAS_HORAS = [...HORAS_DIA, ...HORAS_NOTURNO]
 const DIAS_CURTOS = ['Seg', 'Ter', 'Qua', 'Qui', 'Sex']
-
-// Gera slots de 30 minutos entre hora_inicio e hora_fim
-function gerarSlotsHorario(horaInicio: string, horaFim: string): string[] {
-  const slots: string[] = []
-  const [startH, startM] = horaInicio.split(':').map(Number)
-  const [endH, endM] = horaFim.split(':').map(Number)
-  
-  let currentH = startH
-  let currentM = startM
-  
-  while (currentH < endH || (currentH === endH && currentM < endM)) {
-    slots.push(`${String(currentH).padStart(2, '0')}:${String(currentM).padStart(2, '0')}`)
-    currentM += 30
-    if (currentM >= 60) {
-      currentM = 0
-      currentH++
-    }
-  }
-  
-  return slots
-}
+const DIAS_NUM = [1, 2, 3, 4, 5]
 
 interface GradeHorariosProps {
   horarios: Horario[]
@@ -36,38 +23,36 @@ interface GradeHorariosProps {
 }
 
 export function GradeHorarios({ horarios, onSelectDisciplina }: GradeHorariosProps) {
-  const diasUteis = [1, 2, 3, 4, 5]
   const [expandido, setExpandido] = useState(false)
 
-  // Mapeia cada horário para todos os slots que ele ocupa
-  const slotsOcupados = useMemo(() => {
-    const mapa = new Map<string, Horario>()
-    horarios.forEach(h => {
-      const slots = gerarSlotsHorario(h.hora_inicio, h.hora_fim || h.hora_inicio)
-      slots.forEach(slot => {
-        mapa.set(`${h.dia_semana}-${slot}`, h)
-      })
+  const temHorarioNoturno = useMemo(
+    () => horarios.some(h => h.hora_inicio >= '18:00'),
+    [horarios]
+  )
+
+  const horasExibidas = expandido ? TODAS_HORAS : HORAS_DIA
+
+  // Retorna o horário cuja hora_inicio coincide com esta célula (célula raiz do bloco)
+  const getHorarioInicio = (dia: number, hora: string) =>
+    horarios.find(h => h.dia_semana === dia && h.hora_inicio === hora)
+
+  // Verifica se esta célula está coberta por um rowSpan de uma linha anterior
+  const isCelulaOcupada = (dia: number, hora: string): boolean =>
+    horarios.some(h => {
+      if (h.dia_semana !== dia || h.hora_inicio === hora || !h.hora_fim) return false
+      return hora > h.hora_inicio && hora < h.hora_fim
     })
-    return mapa
-  }, [horarios])
 
-  // Coleta todas as horas únicas que precisam ser exibidas
-  const todasHoras = useMemo(() => {
-    const horasSet = new Set<string>()
-    horarios.forEach(h => {
-      const slots = gerarSlotsHorario(h.hora_inicio, h.hora_fim || h.hora_inicio)
-      slots.forEach(slot => horasSet.add(slot))
-    })
-    return [...horasSet].sort()
-  }, [horarios])
+  // Calcula quantas linhas o bloco deve ocupar
+  const calcRowSpan = (horario: Horario): number => {
+    if (!horario.hora_fim) return 1
+    const idxInicio = TODAS_HORAS.indexOf(horario.hora_inicio)
+    const idxFim = TODAS_HORAS.indexOf(horario.hora_fim)
+    if (idxInicio < 0 || idxFim <= idxInicio) return 1
+    return idxFim - idxInicio
+  }
 
-  const temHorarioNoturno = todasHoras.some(h => h >= HORA_LIMITE)
-  const horasExibidas = expandido ? todasHoras : todasHoras.filter(h => h < HORA_LIMITE)
-
-  const getAulaPorDiaHora = (dia: number, hora: string) =>
-    slotsOcupados.get(`${dia}-${hora}`)
-
-  if (todasHoras.length === 0) {
+  if (horarios.length === 0) {
     return (
       <p className="text-sm text-muted-foreground text-center py-6">
         Acesse "Minha Grade" e arraste disciplinas para criar seu horário.
@@ -78,56 +63,74 @@ export function GradeHorarios({ horarios, onSelectDisciplina }: GradeHorariosPro
   return (
     <div className="space-y-2">
       <div className="overflow-x-auto rounded-md border border-border">
-        <table className="w-full border-collapse text-xs">
+        <table className="border-collapse text-xs w-full min-w-max">
           <thead>
             <tr className="bg-muted">
-              <th className="p-2 text-left font-semibold text-muted-foreground w-14 border-b border-border">
+              <th className="p-2 text-center font-semibold text-muted-foreground w-14 border-b border-border">
                 Hora
               </th>
-              {diasUteis.map((dia, i) => (
-                <th key={dia} className="p-2 text-center font-semibold border-b border-l border-border">
+              {DIAS_NUM.map((_, i) => (
+                <th key={i} className="p-2 text-center font-semibold border-b border-l border-border w-[100px]">
                   {DIAS_CURTOS[i]}
                 </th>
               ))}
             </tr>
           </thead>
           <tbody>
-            {horasExibidas.map((hora, idx) => (
-              <tr
-                key={hora}
-                className={cn(
-                  'transition-colors',
-                  idx % 2 === 0 ? 'bg-background' : 'bg-muted/20'
-                )}
-              >
-                <td className="p-1.5 text-center font-mono text-muted-foreground border-r border-border whitespace-nowrap text-[11px]">
-                  {hora}
-                </td>
-                {diasUteis.map(dia => {
-                  const aula = getAulaPorDiaHora(dia, hora)
-                  return (
-                    <td
-                      key={`${dia}-${hora}`}
-                      className={cn(
-                        'border-l border-border p-1 text-center h-9 transition-colors',
-                        aula && 'cursor-pointer hover:opacity-80'
-                      )}
-                      style={aula ? { backgroundColor: aula.disciplina?.cor + '18' } : undefined}
-                      onClick={() => aula && onSelectDisciplina(aula.disciplina_id)}
-                    >
-                      {aula && (
-                        <span
-                          className="font-semibold text-[11px] leading-none"
-                          style={{ color: aula.disciplina?.cor }}
-                        >
-                          {aula.disciplina?.codigo}
-                        </span>
-                      )}
-                    </td>
-                  )
-                })}
-              </tr>
-            ))}
+            {horasExibidas.map((hora, idx) => {
+              const celulasCobertasPorRowspan = DIAS_NUM.filter(dia => isCelulaOcupada(dia, hora))
+
+              return (
+                <tr
+                  key={hora}
+                  className={cn(idx % 2 === 0 ? 'bg-background' : 'bg-muted/20')}
+                >
+                  <td className="p-1.5 text-center font-mono text-muted-foreground border-r border-border whitespace-nowrap bg-muted/40">
+                    {hora}
+                  </td>
+                  {DIAS_NUM.map(dia => {
+                    if (celulasCobertasPorRowspan.includes(dia)) return null
+
+                    const horario = getHorarioInicio(dia, hora)
+                    const rowSpan = horario ? calcRowSpan(horario) : 1
+
+                    return (
+                      <td
+                        key={`${dia}-${hora}`}
+                        rowSpan={rowSpan}
+                        className={cn(
+                          'border-l border-t border-border p-1 text-center transition-colors',
+                          horario && 'cursor-pointer hover:opacity-80'
+                        )}
+                        style={{
+                          minHeight: `${rowSpan * 36}px`,
+                          height: `${rowSpan * 36}px`,
+                          ...(horario?.disciplina ? { backgroundColor: horario.disciplina.cor + '18' } : {}),
+                        }}
+                        onClick={() => horario && onSelectDisciplina(horario.disciplina_id)}
+                      >
+                        {horario?.disciplina && (
+                          <div className="flex flex-col items-center justify-center h-full gap-0.5">
+                            <span
+                              className="font-bold text-[11px] leading-none"
+                              style={{ color: horario.disciplina.cor }}
+                            >
+                              {horario.disciplina.codigo}
+                            </span>
+                            <span
+                              className="text-[10px] opacity-70"
+                              style={{ color: horario.disciplina.cor }}
+                            >
+                              {horario.hora_inicio} - {horario.hora_fim}
+                            </span>
+                          </div>
+                        )}
+                      </td>
+                    )
+                  })}
+                </tr>
+              )
+            })}
           </tbody>
         </table>
       </div>
