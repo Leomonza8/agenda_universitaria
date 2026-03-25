@@ -68,8 +68,7 @@ export default function Home() {
   }, [supabase, user])
 
   useEffect(() => {
-    const ok = checkAuth()
-    if (ok) setLoading(false)
+    checkAuth()
   }, [checkAuth])
 
   useEffect(() => {
@@ -87,6 +86,7 @@ export default function Home() {
     ? disciplinas.find(d => d.id === disciplinaSelecionada)
     : null
 
+  // Calcular contadores
   const hoje = new Date().getDay()
   const aulasHoje = horarios.filter(h => h.dia_semana === hoje)
   const tarefasPendentes = tarefas.filter(t => !t.concluida).length
