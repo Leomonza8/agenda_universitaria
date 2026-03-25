@@ -12,7 +12,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog'
 import { Plus, Trash2, BookOpen, Pencil } from 'lucide-react'
-import { format } from 'date-fns'
+import { format, parseISO } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
 
 interface ListaTarefasProps {
@@ -180,7 +180,7 @@ export function ListaTarefas({ tarefas, disciplinas, disciplinaFiltro, onUpdate 
         )}
         {tarefa.data_entrega && (
           <p className="text-xs text-muted-foreground mt-1">
-            Entrega: {format(new Date(tarefa.data_entrega), "dd 'de' MMMM", { locale: ptBR })}
+            Entrega: {format(parseISO(tarefa.data_entrega), "dd 'de' MMMM", { locale: ptBR })}
           </p>
         )}
       </div>
