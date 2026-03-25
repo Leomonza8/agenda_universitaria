@@ -195,19 +195,21 @@ export function GerenciarDisciplinas({ disciplinas, onUpdate, user }: Props) {
       )}
 
       {/* Disciplinas Privadas do Usuário */}
-      {disciplinasPrivadas.length > 0 && (
-        <div className="space-y-3">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <BookOpen className="h-4 w-4 text-amber-500" />
-              <h3 className="font-semibold text-sm">Minhas Disciplinas</h3>
+      <div className="space-y-3">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <BookOpen className="h-4 w-4 text-amber-500" />
+            <h3 className="font-semibold text-sm">Minhas Disciplinas</h3>
+            {disciplinasPrivadas.length > 0 && (
               <Badge variant="secondary" className="text-xs">{disciplinasPrivadas.length}</Badge>
-            </div>
-            <Button onClick={abrirNova} size="sm">
-              <Plus className="h-4 w-4 mr-1" />
-              Nova
-            </Button>
+            )}
           </div>
+          <Button onClick={abrirNova} size="sm">
+            <Plus className="h-4 w-4 mr-1" />
+            Nova
+          </Button>
+        </div>
+        {disciplinasPrivadas.length > 0 ? (
           <div className="space-y-2">
             {disciplinasPrivadas.map(d => (
               <Card key={d.id}>
@@ -234,12 +236,16 @@ export function GerenciarDisciplinas({ disciplinas, onUpdate, user }: Props) {
               </Card>
             ))}
           </div>
-        </div>
-      )}
+        ) : (
+          <p className="text-xs text-muted-foreground text-center py-4">
+            Clique em "Nova" para criar sua primeira disciplina ou extensao
+          </p>
+        )}
+      </div>
 
       {disciplinasPublicas.length === 0 && disciplinasPrivadas.length === 0 && (
-        <div className="text-center py-8 text-muted-foreground text-sm">
-          Nenhuma disciplina disponível
+        <div className="text-center py-4 text-muted-foreground text-sm">
+          Use o botao "Nova" acima para criar disciplinas ou extensoes
         </div>
       )}
 

@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useMemo } from 'react'
 import { Horario, DIAS_SEMANA } from '@/lib/types'
 import { cn } from '@/lib/utils'
 import { ChevronDown, ChevronUp } from 'lucide-react'
@@ -8,6 +8,27 @@ import { Button } from '@/components/ui/button'
 
 const HORA_LIMITE = '18:00'
 const DIAS_CURTOS = ['Seg', 'Ter', 'Qua', 'Qui', 'Sex']
+
+// Gera slots de 30 minutos entre hora_inicio e hora_fim
+function gerarSlotsHorario(horaInicio: string, horaFim: string): string[] {
+  const slots: string[] = []
+  const [startH, startM] = horaInicio.split(':').map(Number)
+  const [endH, endM] = horaFim.split(':').map(Number)
+  
+  let currentH = startH
+  let currentM = startM
+  
+  while (currentH < endH || (currentH === endH && currentM < endM)) {
+    slots.push(`${String(currentH).padStart(2, '0')}:${String(currentM).padStart(2, '0')}`)
+    currentM += 30
+    if (currentM >= 60) {
+      currentM = 0
+      currentH++
+    }
+  }
+  
+  return slots
+}
 
 interface GradeHorariosProps {
   horarios: Horario[]
@@ -18,12 +39,33 @@ export function GradeHorarios({ horarios, onSelectDisciplina }: GradeHorariosPro
   const diasUteis = [1, 2, 3, 4, 5]
   const [expandido, setExpandido] = useState(false)
 
-  const todasHoras = [...new Set(horarios.map(h => h.hora_inicio))].sort()
+  // Mapeia cada horário para todos os slots que ele ocupa
+  const slotsOcupados = useMemo(() => {
+    const mapa = new Map<string, Horario>()
+    horarios.forEach(h => {
+      const slots = gerarSlotsHorario(h.hora_inicio, h.hora_fim || h.hora_inicio)
+      slots.forEach(slot => {
+        mapa.set(`${h.dia_semana}-${slot}`, h)
+      })
+    })
+    return mapa
+  }, [horarios])
+
+  // Coleta todas as horas únicas que precisam ser exibidas
+  const todasHoras = useMemo(() => {
+    const horasSet = new Set<string>()
+    horarios.forEach(h => {
+      const slots = gerarSlotsHorario(h.hora_inicio, h.hora_fim || h.hora_inicio)
+      slots.forEach(slot => horasSet.add(slot))
+    })
+    return [...horasSet].sort()
+  }, [horarios])
+
   const temHorarioNoturno = todasHoras.some(h => h >= HORA_LIMITE)
   const horasExibidas = expandido ? todasHoras : todasHoras.filter(h => h < HORA_LIMITE)
 
   const getAulaPorDiaHora = (dia: number, hora: string) =>
-    horarios.find(h => h.dia_semana === dia && h.hora_inicio === hora)
+    slotsOcupados.get(`${dia}-${hora}`)
 
   if (todasHoras.length === 0) {
     return (
