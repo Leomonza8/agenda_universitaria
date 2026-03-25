@@ -217,12 +217,17 @@ export function EditorGrade({ disciplinas, horarios, onUpdate, user }: Props) {
                                 color: disc.cor,
                               }}
                             >
-                              <span className="font-semibold text-[11px] leading-none text-center px-1 truncate w-full text-center">
-                                {disc.codigo || disc.nome}
+                              {disc.nome && (
+                                <span className="text-[9px] leading-tight font-medium opacity-70 text-center px-0.5 line-clamp-2">
+                                  {disc.nome}
+                                </span>
+                              )}
+                              <span className="font-bold text-[11px] leading-none text-center px-1 truncate w-full">
+                                {disc.codigo}
                               </span>
                               {rowSpan > 1 && (
-                                <span className="text-[9px] opacity-60 font-medium">
-                                  {horario.hora_inicio} - {horario.hora_fim}
+                                <span className="text-[8px] opacity-60 font-medium mt-0.5">
+                                  {horario.hora_inicio}–{horario.hora_fim}
                                 </span>
                               )}
                               <button
