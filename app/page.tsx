@@ -4,7 +4,7 @@ import { useEffect, useState, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { getSession, clearSession } from '@/lib/auth'
-import { Disciplina, Horario, Tarefa, Anotacao, DIAS_SEMANA } from '@/lib/types'
+import { Disciplina, Horario, Tarefa, Anotacao, Revisao, DIAS_SEMANA } from '@/lib/types'
 import { GradeHorarios } from '@/components/grade-horarios'
 import { ListaTarefas } from '@/components/lista-tarefas'
 import { AnotacoesAula } from '@/components/anotacoes-aula'
@@ -31,6 +31,7 @@ export default function Home() {
   const [disciplinas, setDisciplinas] = useState<Disciplina[]>([])
   const [horarios, setHorarios] = useState<Horario[]>([])
   const [tarefas, setTarefas] = useState<Tarefa[]>([])
+  const [revisoes, setRevisoes] = useState<Revisao[]>([])
   const [anotacoes, setAnotacoes] = useState<Anotacao[]>([])
   const [disciplinaSelecionada, setDisciplinaSelecionada] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
@@ -51,7 +52,7 @@ export default function Home() {
   const fetchData = useCallback(async () => {
     if (!user) return
     
-    const [disciplinasRes, horariosRes, tarefasRes, anotacoesRes, revsoesRes] = await Promise.all([
+    const [disciplinasRes, horariosRes, tarefasRes, anotacoesRes, revisoesRes] = await Promise.all([
       // Buscar disciplinas públicas + disciplinas do usuário
       supabase.from('disciplinas').select('*').or(`user_id.is.null,user_id.eq.${user.userId}`).order('codigo'),
       supabase.from('horarios').select('*, disciplina:disciplinas(*)').eq('user_id', user.userId).order('hora_inicio'),
@@ -63,6 +64,7 @@ export default function Home() {
     if (disciplinasRes.data) setDisciplinas(disciplinasRes.data)
     if (horariosRes.data) setHorarios(horariosRes.data)
     if (tarefasRes.data) setTarefas(tarefasRes.data)
+    if (revisoesRes.data) setRevisoes(revisoesRes.data)
     if (anotacoesRes.data) setAnotacoes(anotacoesRes.data)
     setLoading(false)
   }, [supabase, user])
@@ -88,8 +90,13 @@ export default function Home() {
 
   // Calcular contadores
   const hoje = new Date().getDay()
-  const aulasHoje = horarios.filter(h => h.dia_semana === hoje)
+  // Contar disciplinas únicas com aula hoje (não slots duplicados)
+  const disciplinasHoje = new Set(horarios.filter(h => h.dia_semana === hoje).map(h => h.disciplina_id))
+  const aulasHoje = disciplinasHoje.size
+  // Contar tarefas não concluídas + revisões não concluídas
   const tarefasPendentes = tarefas.filter(t => !t.concluida).length
+  const revisoesPendentes = revisoes.filter(r => r.status !== 'concluida').length
+  const totalPendentes = tarefasPendentes + revisoesPendentes
 
   if (loading) {
     return (
@@ -120,16 +127,16 @@ export default function Home() {
             </div>
             <div className="flex items-center gap-3">
               <div className="hidden sm:flex items-center gap-2">
-                {tarefasPendentes > 0 && (
+                {totalPendentes > 0 && (
                   <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-muted/60 text-xs font-medium text-muted-foreground">
                     <CheckSquare className="h-3.5 w-3.5" />
-                    <span>{tarefasPendentes} pendentes</span>
+                    <span>{totalPendentes} pendentes</span>
                   </div>
                 )}
-                {aulasHoje.length > 0 && (
+                {aulasHoje > 0 && (
                   <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-primary/10 text-xs font-medium text-primary">
                     <CalendarDays className="h-3.5 w-3.5" />
-                    <span>{aulasHoje.length} aulas hoje</span>
+                    <span>{aulasHoje} {aulasHoje === 1 ? 'aula' : 'aulas'} hoje</span>
                   </div>
                 )}
               </div>
