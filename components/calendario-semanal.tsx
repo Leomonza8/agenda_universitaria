@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useCallback, useRef } from 'react'
 import { createClient } from '@/lib/supabase/client'
+import { getSession } from '@/lib/auth'
 import { Tarefa, Revisao, Disciplina } from '@/lib/types'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -169,8 +170,8 @@ export function CalendarioSemanal({ onUpdate }: { onUpdate?: () => void }) {
     if (!novoTitulo.trim() || !novaDisciplinaId) return
     setSaving(true)
 
-    const { data: { user } } = await supabase.auth.getUser()
-    if (!user) {
+    const session = getSession()
+    if (!session) {
       setSaving(false)
       return
     }
@@ -183,7 +184,7 @@ export function CalendarioSemanal({ onUpdate }: { onUpdate?: () => void }) {
         data_entrega: dialogDate || null,
         prioridade: novaPrioridade,
         concluida: false,
-        user_id: user.id,
+        user_id: session.userId,
       }])
       .select('*, disciplina:disciplinas(*)')
       .single()

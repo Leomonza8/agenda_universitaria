@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useCallback } from 'react'
 import { createClient } from '@/lib/supabase/client'
+import { getSession } from '@/lib/auth'
 import { Revisao, Tarefa, StatusRevisao } from '@/lib/types'
 import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -65,8 +66,8 @@ export function SistemaRevisao() {
   const handleAddRevisao = async () => {
     if (!novaRevisao.tarefas_id) return
 
-    const { data: { user } } = await supabase.auth.getUser()
-    if (!user) return
+    const session = getSession()
+    if (!session) return
 
     const { error } = await supabase.from('revisoes').insert([{
       tarefas_id: novaRevisao.tarefas_id,
@@ -74,7 +75,7 @@ export function SistemaRevisao() {
       data_revisao: novaRevisao.data_revisao,
       tempo_estimado: novaRevisao.tempo_estimado,
       status: 'nao_iniciada',
-      user_id: user.id,
+      user_id: session.userId,
     }])
 
     if (!error) {
