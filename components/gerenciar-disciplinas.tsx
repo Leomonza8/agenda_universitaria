@@ -81,13 +81,16 @@ export function GerenciarDisciplinas({ disciplinas, onUpdate, user }: Props) {
   }
 
   const handleSalvar = async () => {
-    if (!form.codigo.trim() || !form.nome.trim()) return
+    // Código é obrigatório apenas para disciplinas/optativas
+    const codigoObrigatorio = form.tipo !== 'extensao'
+    if (codigoObrigatorio && !form.codigo.trim()) return
+    if (!form.nome.trim()) return
     const session = getSession()
     if (!session) return
 
     setSaving(true)
     const payload = {
-      codigo: form.codigo.trim().toUpperCase(),
+      codigo: form.codigo.trim().toUpperCase() || null,
       nome: form.nome.trim(),
       professor: form.professor.trim() || null,
       local: form.local.trim() || null,
@@ -195,19 +198,21 @@ export function GerenciarDisciplinas({ disciplinas, onUpdate, user }: Props) {
       )}
 
       {/* Disciplinas Privadas do Usuário */}
-      {disciplinasPrivadas.length > 0 && (
-        <div className="space-y-3">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <BookOpen className="h-4 w-4 text-amber-500" />
-              <h3 className="font-semibold text-sm">Minhas Disciplinas</h3>
+      <div className="space-y-3">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <BookOpen className="h-4 w-4 text-amber-500" />
+            <h3 className="font-semibold text-sm">Minhas Disciplinas</h3>
+            {disciplinasPrivadas.length > 0 && (
               <Badge variant="secondary" className="text-xs">{disciplinasPrivadas.length}</Badge>
-            </div>
-            <Button onClick={abrirNova} size="sm">
-              <Plus className="h-4 w-4 mr-1" />
-              Nova
-            </Button>
+            )}
           </div>
+          <Button onClick={abrirNova} size="sm">
+            <Plus className="h-4 w-4 mr-1" />
+            Nova
+          </Button>
+        </div>
+        {disciplinasPrivadas.length > 0 ? (
           <div className="space-y-2">
             {disciplinasPrivadas.map(d => (
               <Card key={d.id}>
@@ -234,12 +239,16 @@ export function GerenciarDisciplinas({ disciplinas, onUpdate, user }: Props) {
               </Card>
             ))}
           </div>
-        </div>
-      )}
+        ) : (
+          <p className="text-xs text-muted-foreground text-center py-4">
+            Clique em "Nova" para criar sua primeira disciplina ou extensao
+          </p>
+        )}
+      </div>
 
       {disciplinasPublicas.length === 0 && disciplinasPrivadas.length === 0 && (
-        <div className="text-center py-8 text-muted-foreground text-sm">
-          Nenhuma disciplina disponível
+        <div className="text-center py-4 text-muted-foreground text-sm">
+          Use o botao "Nova" acima para criar disciplinas ou extensoes
         </div>
       )}
 
@@ -248,17 +257,23 @@ export function GerenciarDisciplinas({ disciplinas, onUpdate, user }: Props) {
           <DialogHeader>
             <DialogTitle>{editando ? 'Editar Disciplina' : 'Nova Disciplina'}</DialogTitle>
             <DialogDescription>
-              Preencha os dados da disciplina. Codigo e nome sao obrigatorios.
+              {form.tipo === 'extensao' 
+                ? 'Preencha os dados da extensao. Codinome e nome sao opcionais.'
+                : 'Preencha os dados da disciplina. Codigo e nome sao obrigatorios.'
+              }
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-3 pt-1">
             <div className="grid grid-cols-2 gap-2">
               <div className="space-y-1">
-                <label className="text-sm font-medium">Codigo *</label>
+                <label className="text-sm font-medium flex items-center gap-1">
+                  {form.tipo === 'extensao' ? 'Codinome' : 'Codigo'}
+                  {form.tipo !== 'extensao' && <span className="text-destructive">*</span>}
+                </label>
                 <Input
                   value={form.codigo}
                   onChange={e => setForm(f => ({ ...f, codigo: e.target.value }))}
-                  placeholder="MAT001"
+                  placeholder={form.tipo === 'extensao' ? 'Opcional' : 'MAT001'}
                 />
               </div>
               <div className="space-y-1">
@@ -323,7 +338,7 @@ export function GerenciarDisciplinas({ disciplinas, onUpdate, user }: Props) {
               <Button
                 className="flex-1"
                 onClick={handleSalvar}
-                disabled={saving || !form.codigo.trim() || !form.nome.trim()}
+                disabled={saving || !form.nome.trim() || (form.tipo !== 'extensao' && !form.codigo.trim())}
               >
                 {saving ? 'Salvando...' : 'Salvar'}
               </Button>

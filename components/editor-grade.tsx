@@ -48,8 +48,28 @@ export function EditorGrade({ disciplinas, horarios, onUpdate, user }: Props) {
 
   const horasExibidas = expandNoturno ? TODAS_HORAS : HORAS_DIA
 
-  const getHorarioNaSlot = (dia: number, hora: string) => {
+  // Retorna o horário cujo hora_inicio === hora (célula-raiz do bloco)
+  const getHorarioInicio = (dia: number, hora: string) => {
     return horarios.find(h => h.dia_semana === dia && h.hora_inicio === hora)
+  }
+
+  // Verifica se esta célula está coberta por algum horário (mas não é a célula de início)
+  const isCelulaOcupada = (dia: number, hora: string): boolean => {
+    return horarios.some(h => {
+      if (h.dia_semana !== dia) return false
+      if (h.hora_inicio === hora) return false // é a célula raiz, não intermediária
+      if (!h.hora_fim) return false
+      return hora > h.hora_inicio && hora < h.hora_fim
+    })
+  }
+
+  // Calcula o rowSpan de um horário baseado em hora_inicio e hora_fim
+  const calcRowSpan = (horario: Horario): number => {
+    if (!horario.hora_fim) return 1
+    const idxInicio = TODAS_HORAS.indexOf(horario.hora_inicio)
+    const idxFim = TODAS_HORAS.indexOf(horario.hora_fim)
+    if (idxInicio < 0 || idxFim <= idxInicio) return 1
+    return idxFim - idxInicio
   }
 
   const handleDragStart = (disciplinaId: string) => {
@@ -137,94 +157,108 @@ export function EditorGrade({ disciplinas, horarios, onUpdate, user }: Props) {
       {/* Grade com scroll horizontal */}
       <div className="border border-border rounded-lg overflow-hidden shadow-sm">
         <div className="overflow-x-auto bg-background">
-          <div className="min-w-max">
-            {/* Header dias */}
-            <div className="grid bg-gradient-to-b from-muted to-muted/80 sticky top-0 z-20" style={{ gridTemplateColumns: '56px repeat(5, 120px)' }}>
-              <div className="p-2.5 text-xs font-bold text-muted-foreground text-center">Horário</div>
-              {DIAS.map((d, i) => (
-                <div key={i} className="p-2.5 text-xs font-bold text-center border-l border-border/50">
-                  {d}
-                </div>
-              ))}
-            </div>
+          <table className="border-collapse min-w-max w-full">
+            <thead>
+              <tr className="bg-muted">
+                <th className="p-2.5 text-xs font-bold text-muted-foreground text-center w-14 border-b border-border/50">
+                  Horário
+                </th>
+                {DIAS.map((d, i) => (
+                  <th key={i} className="p-2.5 text-xs font-bold text-center border-l border-b border-border/50 w-[120px]">
+                    {d}
+                  </th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {horasExibidas.map((hora, idx) => {
+                // Calcula quais colunas já estão cobertas por rowSpan de linhas anteriores
+                const celulasCobertasPorRowspan = DIAS_NUM.filter(dia => isCelulaOcupada(dia, hora))
 
-            {/* Linhas de horário */}
-            {horasExibidas.map((hora, idx) => (
-              <div
-                key={hora}
-                className={`grid border-t border-border/50 transition-colors hover:bg-muted/30 ${
-                  idx % 2 === 0 ? 'bg-white dark:bg-slate-950' : 'bg-muted/20'
-                }`}
-                style={{ gridTemplateColumns: '56px repeat(5, 120px)' }}
-              >
-                <div className="p-2 text-xs font-semibold text-muted-foreground text-right pr-2 leading-tight self-center bg-muted/40">
-                  {hora}
-                </div>
-                {DIAS_NUM.map((dia) => {
-                  const horario = getHorarioNaSlot(dia, hora)
-                  const disc = horario ? disciplinas.find(d => d.id === horario.disciplina_id) : null
-                  const isHover = hoverCell?.dia === dia && hoverCell?.hora === hora
+                return (
+                  <tr
+                    key={hora}
+                    className={idx % 2 === 0 ? 'bg-white dark:bg-slate-950' : 'bg-muted/20'}
+                  >
+                    {/* Coluna da hora */}
+                    <td className="p-2 text-xs font-semibold text-muted-foreground text-right pr-3 leading-tight bg-muted/40 border-t border-border/50 whitespace-nowrap">
+                      {hora}
+                    </td>
 
-                  return (
-                    <div
-                      key={dia}
-                      className="border-l border-border/50 min-h-[48px] relative transition-all"
-                      style={{
-                        backgroundColor: isHover && !horario && dragging ? disciplinas.find(d => d.id === dragging)?.cor + '15' : undefined,
-                      }}
-                      onDragOver={(e) => handleDragOver(e, dia, hora)}
-                      onDragLeave={() => setHoverCell(null)}
-                      onDrop={(e) => handleDrop(e, dia, hora)}
-                    >
-                      {disc && horario && (
-                        <div
-                          className="absolute inset-1 rounded-md text-xs font-semibold flex flex-col items-center justify-center gap-0.5 group shadow-sm hover:shadow-md transition-all"
+                    {/* Colunas dos dias — pula as que estão cobertas por rowSpan */}
+                    {DIAS_NUM.map((dia) => {
+                      // Esta célula está coberta por um rowSpan de cima? Não renderiza o <td>
+                      if (celulasCobertasPorRowspan.includes(dia)) return null
+
+                      const horario = getHorarioInicio(dia, hora)
+                      const disc = horario ? disciplinas.find(d => d.id === horario.disciplina_id) : null
+                      const rowSpan = horario ? calcRowSpan(horario) : 1
+                      const isHover = hoverCell?.dia === dia && hoverCell?.hora === hora
+                      const dragDisc = dragging ? disciplinas.find(d => d.id === dragging) : null
+
+                      return (
+                        <td
+                          key={dia}
+                          rowSpan={rowSpan}
+                          className="border-l border-t border-border/50 relative transition-all p-0"
                           style={{
-                            backgroundColor: disc.cor + '25',
-                            border: `2px solid ${disc.cor}`,
-                            color: disc.cor,
+                            minWidth: 120,
+                            height: `${rowSpan * 48}px`,
+                            backgroundColor: isHover && !horario && dragDisc ? dragDisc.cor + '15' : undefined,
                           }}
+                          onDragOver={(e) => !horario && handleDragOver(e, dia, hora)}
+                          onDragLeave={() => setHoverCell(null)}
+                          onDrop={(e) => !horario && handleDrop(e, dia, hora)}
                         >
-                          <div>{disc.codigo}</div>
-                          {horario.hora_fim && (
-                            <div className="text-[10px] opacity-75">
-                              {horario.hora_inicio}-{horario.hora_fim}
+                          {disc && horario && (
+                            <div
+                              className="absolute inset-1 rounded-md text-xs font-semibold flex flex-col items-center justify-center gap-0.5 group shadow-sm hover:shadow-md transition-all cursor-pointer"
+                              style={{
+                                backgroundColor: disc.cor + '25',
+                                border: `2px solid ${disc.cor}`,
+                                color: disc.cor,
+                              }}
+                            >
+                              <div className="font-bold">{disc.codigo}</div>
+                              <div className="text-[10px] opacity-75">
+                                {horario.hora_inicio} - {horario.hora_fim}
+                              </div>
+                              <button
+                                className="absolute -top-2 -right-2 opacity-0 group-hover:opacity-100 transition-opacity bg-destructive text-white rounded-full p-1 shadow-md hover:bg-destructive/90"
+                                onClick={() => handleRemoverHorario(horario.id)}
+                              >
+                                <Trash2 className="h-3 w-3" />
+                              </button>
                             </div>
                           )}
-                          <button
-                            className="absolute -top-2 -right-2 opacity-0 group-hover:opacity-100 transition-opacity bg-destructive text-white rounded-full p-1 shadow-md hover:bg-destructive/90"
-                            onClick={() => handleRemoverHorario(horario.id)}
-                          >
-                            <Trash2 className="h-3 w-3" />
-                          </button>
-                        </div>
-                      )}
-                      {!horario && isHover && dragging && (
-                        <div className="absolute inset-1 rounded-md border-2 border-dashed border-primary/60 flex items-center justify-center bg-primary/5">
-                          <Plus className="h-4 w-4 text-primary" />
-                        </div>
-                      )}
-                    </div>
-                  )
-                })}
-              </div>
-            ))}
+                          {!horario && isHover && dragDisc && (
+                            <div className="absolute inset-1 rounded-md border-2 border-dashed border-primary/60 flex items-center justify-center bg-primary/5">
+                              <Plus className="h-4 w-4 text-primary" />
+                            </div>
+                          )}
+                        </td>
+                      )
+                    })}
+                  </tr>
+                )
+              })}
 
-            {/* Botão expandir/recolher noturno */}
-            <div className="grid border-t border-border/50 bg-muted/40" style={{ gridTemplateColumns: '56px repeat(5, 120px)' }}>
-              <div className="col-span-6 p-1.5">
-                <button
-                  onClick={() => setExpandNoturno(v => !v)}
-                  className="w-full flex items-center justify-center gap-1.5 text-xs font-medium text-muted-foreground hover:text-foreground transition-colors py-1"
-                >
-                  {expandNoturno
-                    ? <><ChevronDown className="h-3.5 w-3.5 rotate-180" /> Ocultar horários noturnos (após 18h)</>
-                    : <><ChevronDown className="h-3.5 w-3.5" /> Mostrar horários noturnos (18h - 22h)</>
-                  }
-                </button>
-              </div>
-            </div>
-          </div>
+              {/* Botão expandir/recolher noturno */}
+              <tr className="bg-muted/40 border-t border-border/50">
+                <td colSpan={6} className="p-1.5">
+                  <button
+                    onClick={() => setExpandNoturno(v => !v)}
+                    className="w-full flex items-center justify-center gap-1.5 text-xs font-medium text-muted-foreground hover:text-foreground transition-colors py-1"
+                  >
+                    {expandNoturno
+                      ? <><ChevronDown className="h-3.5 w-3.5 rotate-180" /> Ocultar horários noturnos (após 18h)</>
+                      : <><ChevronDown className="h-3.5 w-3.5" /> Mostrar horários noturnos (18h - 22h)</>
+                    }
+                  </button>
+                </td>
+              </tr>
+            </tbody>
+          </table>
         </div>
       </div>
 
