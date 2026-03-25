@@ -5,8 +5,7 @@ import { createClient } from '@/lib/supabase/client'
 import { getSession } from '@/lib/auth'
 import { Disciplina, Horario } from '@/lib/types'
 import { Button } from '@/components/ui/button'
-import { Badge } from '@/components/ui/badge'
-import { Trash2, GripVertical, Plus, ChevronDown } from 'lucide-react'
+import { Trash2, GripVertical, Plus, ChevronDown, X } from 'lucide-react'
 import {
   Dialog,
   DialogContent,
@@ -14,7 +13,6 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog'
-import { Input } from '@/components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 
 const DIAS = ['Seg', 'Ter', 'Qua', 'Qui', 'Sex']
@@ -48,22 +46,17 @@ export function EditorGrade({ disciplinas, horarios, onUpdate, user }: Props) {
 
   const horasExibidas = expandNoturno ? TODAS_HORAS : HORAS_DIA
 
-  // Retorna o horário cujo hora_inicio === hora (célula-raiz do bloco)
-  const getHorarioInicio = (dia: number, hora: string) => {
-    return horarios.find(h => h.dia_semana === dia && h.hora_inicio === hora)
-  }
+  const getHorarioInicio = (dia: number, hora: string) =>
+    horarios.find(h => h.dia_semana === dia && h.hora_inicio === hora)
 
-  // Verifica se esta célula está coberta por algum horário (mas não é a célula de início)
-  const isCelulaOcupada = (dia: number, hora: string): boolean => {
-    return horarios.some(h => {
+  const isCelulaOcupada = (dia: number, hora: string): boolean =>
+    horarios.some(h => {
       if (h.dia_semana !== dia) return false
-      if (h.hora_inicio === hora) return false // é a célula raiz, não intermediária
+      if (h.hora_inicio === hora) return false
       if (!h.hora_fim) return false
       return hora > h.hora_inicio && hora < h.hora_fim
     })
-  }
 
-  // Calcula o rowSpan de um horário baseado em hora_inicio e hora_fim
   const calcRowSpan = (horario: Horario): number => {
     if (!horario.hora_fim) return 1
     const idxInicio = TODAS_HORAS.indexOf(horario.hora_inicio)
@@ -86,16 +79,21 @@ export function EditorGrade({ disciplinas, horarios, onUpdate, user }: Props) {
     e.preventDefault()
     const disciplinaId = dragRef.current
     if (!disciplinaId) return
-
-    // Verifica se já existe horário nesta célula
     const existente = getHorarioInicio(dia, hora) || isCelulaOcupada(dia, hora)
     if (existente) return
-
     setHoverCell(null)
     setDragging(null)
     dragRef.current = null
-
     setSelectedDisciplina(disciplinaId)
+    const idx = TODAS_HORAS.indexOf(hora)
+    setHoraFim(TODAS_HORAS[Math.min(idx + 2, TODAS_HORAS.length - 1)])
+    setDialogHorario({ dia, hora })
+  }
+
+  // Abre o dialog ao clicar numa célula vazia (mobile)
+  const handleCelulaClick = (dia: number, hora: string) => {
+    if (getHorarioInicio(dia, hora) || isCelulaOcupada(dia, hora)) return
+    setSelectedDisciplina(minhasDisciplinas[0]?.id ?? '')
     const idx = TODAS_HORAS.indexOf(hora)
     setHoraFim(TODAS_HORAS[Math.min(idx + 2, TODAS_HORAS.length - 1)])
     setDialogHorario({ dia, hora })
@@ -105,7 +103,6 @@ export function EditorGrade({ disciplinas, horarios, onUpdate, user }: Props) {
     if (!dialogHorario || !selectedDisciplina) return
     const session = getSession()
     if (!session) return
-
     setSaving(true)
     await supabase.from('horarios').insert({
       disciplina_id: selectedDisciplina,
@@ -128,10 +125,16 @@ export function EditorGrade({ disciplinas, horarios, onUpdate, user }: Props) {
   const minhasDisciplinas = disciplinas.filter(d => !d.user_id || d.user_id === user?.userId)
 
   return (
-    <div className="space-y-5">
-      {/* Painel de disciplinas para arrastar */}
-      <div className="bg-card border border-border/60 rounded-lg p-4 shadow-sm">
-        <p className="text-xs font-medium text-muted-foreground mb-3">Arraste para a grade</p>
+    <div className="space-y-4">
+      {/* Painel de disciplinas */}
+      <div className="bg-card border border-border/60 rounded-lg p-3 shadow-sm">
+        <p className="text-xs font-medium text-muted-foreground mb-2.5">
+          <span className="hidden sm:inline">Arraste para a grade ou toque no </span>
+          <span className="sm:hidden">Toque no </span>
+          <span className="inline-flex items-center justify-center w-4 h-4 rounded border border-border mx-0.5 align-middle"><Plus className="h-2.5 w-2.5" /></span>
+          <span className="sm:hidden"> na grade para adicionar</span>
+          <span className="hidden sm:inline"> de cada horario</span>
+        </p>
         <div className="flex flex-wrap gap-2">
           {minhasDisciplinas.map(d => (
             <div
@@ -139,16 +142,16 @@ export function EditorGrade({ disciplinas, horarios, onUpdate, user }: Props) {
               draggable
               onDragStart={() => handleDragStart(d.id)}
               onDragEnd={() => { setDragging(null); dragRef.current = null }}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium cursor-grab active:cursor-grabbing select-none transition-all hover:shadow-md border"
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-semibold cursor-grab active:cursor-grabbing select-none transition-all hover:shadow-sm border"
               style={{
                 backgroundColor: d.cor + '10',
                 borderColor: d.cor + '40',
                 color: d.cor,
-                opacity: dragging === d.id ? 0.5 : 1,
+                opacity: dragging === d.id ? 0.4 : 1,
               }}
             >
-              <GripVertical className="h-3 w-3 opacity-40" />
-              <span className="font-semibold">{d.codigo || d.nome}</span>
+              <GripVertical className="h-3 w-3 opacity-30 hidden sm:block" />
+              {d.codigo || d.nome}
             </div>
           ))}
           {minhasDisciplinas.length === 0 && (
@@ -157,17 +160,17 @@ export function EditorGrade({ disciplinas, horarios, onUpdate, user }: Props) {
         </div>
       </div>
 
-      {/* Grade com scroll horizontal */}
+      {/* Grade */}
       <div className="bg-card border border-border/60 rounded-lg overflow-hidden shadow-sm">
         <div className="overflow-x-auto">
-          <table className="border-collapse min-w-max w-full">
+          <table className="border-collapse w-full" style={{ minWidth: 380 }}>
             <thead>
               <tr className="bg-muted/60">
-                <th className="p-3 text-xs font-semibold text-muted-foreground text-center w-16 border-b border-border/40">
+                <th className="p-2 text-xs font-semibold text-muted-foreground text-center border-b border-border/40 w-14">
                   Hora
                 </th>
                 {DIAS.map((d, i) => (
-                  <th key={i} className="p-3 text-xs font-semibold text-center border-l border-b border-border/40 w-[110px]">
+                  <th key={i} className="p-2 text-xs font-semibold text-center border-l border-b border-border/40">
                     {d}
                   </th>
                 ))}
@@ -176,17 +179,12 @@ export function EditorGrade({ disciplinas, horarios, onUpdate, user }: Props) {
             <tbody>
               {horasExibidas.map((hora, idx) => {
                 const celulasCobertasPorRowspan = DIAS_NUM.filter(dia => isCelulaOcupada(dia, hora))
-
                 return (
-                  <tr
-                    key={hora}
-                    className={idx % 2 === 0 ? 'bg-card' : 'bg-muted/20'}
-                  >
-                    <td className="p-2 text-xs font-mono text-muted-foreground text-center bg-muted/30 border-t border-border/40 whitespace-nowrap">
+                  <tr key={hora} className={idx % 2 === 0 ? 'bg-card' : 'bg-muted/20'}>
+                    <td className="p-1.5 text-[10px] font-mono text-muted-foreground text-center bg-muted/30 border-t border-border/40 whitespace-nowrap">
                       {hora}
                     </td>
-
-                    {DIAS_NUM.map((dia) => {
+                    {DIAS_NUM.map(dia => {
                       if (celulasCobertasPorRowspan.includes(dia)) return null
 
                       const horario = getHorarioInicio(dia, hora)
@@ -194,46 +192,68 @@ export function EditorGrade({ disciplinas, horarios, onUpdate, user }: Props) {
                       const rowSpan = horario ? calcRowSpan(horario) : 1
                       const isHover = hoverCell?.dia === dia && hoverCell?.hora === hora
                       const dragDisc = dragging ? disciplinas.find(d => d.id === dragging) : null
+                      const vazia = !horario
 
                       return (
                         <td
                           key={dia}
                           rowSpan={rowSpan}
-                          className="border-l border-t border-border/40 relative transition-all p-0.5"
+                          className="border-l border-t border-border/40 relative p-0.5 group/cell"
                           style={{
-                            minWidth: 110,
-                            height: `${rowSpan * 44}px`,
-                            backgroundColor: isHover && !horario && dragDisc ? dragDisc.cor + '12' : undefined,
+                            height: `${rowSpan * 40}px`,
+                            backgroundColor: isHover && vazia && dragDisc ? dragDisc.cor + '12' : undefined,
                           }}
-                          onDragOver={(e) => !horario && handleDragOver(e, dia, hora)}
+                          onDragOver={e => vazia && handleDragOver(e, dia, hora)}
                           onDragLeave={() => setHoverCell(null)}
-                          onDrop={(e) => !horario && handleDrop(e, dia, hora)}
+                          onDrop={e => vazia && handleDrop(e, dia, hora)}
                         >
+                          {/* Célula preenchida */}
                           {disc && horario && (
                             <div
-                              className="absolute inset-0.5 rounded flex flex-col items-center justify-center gap-0.5 group transition-all cursor-pointer"
+                              className="absolute inset-0.5 rounded flex flex-col items-center justify-center gap-0.5 transition-all cursor-default group/bloco"
                               style={{
-                                backgroundColor: disc.cor + '18',
+                                backgroundColor: disc.cor + '15',
                                 borderLeft: `3px solid ${disc.cor}`,
                                 color: disc.cor,
                               }}
                             >
-                              <div className="font-semibold text-xs">{disc.codigo || disc.nome}</div>
-                              <div className="text-[10px] opacity-60 font-medium">
-                                {horario.hora_inicio} - {horario.hora_fim}
-                              </div>
+                              <span className="font-semibold text-[11px] leading-none text-center px-1 truncate w-full text-center">
+                                {disc.codigo || disc.nome}
+                              </span>
+                              {rowSpan > 1 && (
+                                <span className="text-[9px] opacity-60 font-medium">
+                                  {horario.hora_inicio} - {horario.hora_fim}
+                                </span>
+                              )}
                               <button
-                                className="absolute top-1 right-1 opacity-0 group-hover:opacity-100 transition-opacity bg-destructive/90 text-white rounded p-0.5"
+                                className="absolute top-0.5 right-0.5 opacity-0 group-hover/bloco:opacity-100 transition-opacity bg-destructive/80 hover:bg-destructive text-white rounded p-0.5"
                                 onClick={() => handleRemoverHorario(horario.id)}
+                                title="Remover"
                               >
-                                <Trash2 className="h-3 w-3" />
+                                <X className="h-2.5 w-2.5" />
                               </button>
                             </div>
                           )}
-                          {!horario && isHover && dragDisc && (
-                            <div className="absolute inset-0.5 rounded border-2 border-dashed border-primary/50 flex items-center justify-center bg-primary/5">
-                              <Plus className="h-4 w-4 text-primary/70" />
+
+                          {/* Célula vazia — hover via drag (desktop) */}
+                          {vazia && isHover && dragDisc && (
+                            <div className="absolute inset-0.5 rounded border-2 border-dashed border-primary/50 flex items-center justify-center bg-primary/5 pointer-events-none">
+                              <Plus className="h-3.5 w-3.5 text-primary/60" />
                             </div>
+                          )}
+
+                          {/* Célula vazia — botao + visivel no hover (desktop) e sempre no mobile */}
+                          {vazia && !isHover && (
+                            <button
+                              className="absolute inset-0 flex items-center justify-center opacity-0 group-hover/cell:opacity-100 sm:opacity-0 sm:group-hover/cell:opacity-100 focus:opacity-100 transition-opacity"
+                              style={{ touchAction: 'manipulation' }}
+                              onClick={() => handleCelulaClick(dia, hora)}
+                              aria-label={`Adicionar disciplina ${DIAS[DIAS_NUM.indexOf(dia)]} ${hora}`}
+                            >
+                              <span className="flex items-center justify-center w-5 h-5 rounded bg-muted/70 border border-border/60">
+                                <Plus className="h-3 w-3 text-muted-foreground" />
+                              </span>
+                            </button>
                           )}
                         </td>
                       )
@@ -246,12 +266,10 @@ export function EditorGrade({ disciplinas, horarios, onUpdate, user }: Props) {
                 <td colSpan={6} className="p-2">
                   <button
                     onClick={() => setExpandNoturno(v => !v)}
-                    className="w-full flex items-center justify-center gap-1.5 text-xs font-medium text-muted-foreground hover:text-foreground transition-colors"
+                    className="w-full flex items-center justify-center gap-1.5 text-xs font-medium text-muted-foreground hover:text-foreground transition-colors py-0.5"
                   >
-                    {expandNoturno
-                      ? <><ChevronDown className="h-3.5 w-3.5 rotate-180" /> Ocultar horarios noturnos</>
-                      : <><ChevronDown className="h-3.5 w-3.5" /> Mostrar horarios noturnos (18h - 22h)</>
-                    }
+                    <ChevronDown className={`h-3.5 w-3.5 transition-transform ${expandNoturno ? 'rotate-180' : ''}`} />
+                    {expandNoturno ? 'Ocultar horarios noturnos' : 'Mostrar horarios noturnos (18h–22h)'}
                   </button>
                 </td>
               </tr>
@@ -260,7 +278,7 @@ export function EditorGrade({ disciplinas, horarios, onUpdate, user }: Props) {
         </div>
       </div>
 
-      {/* Dialog confirmar horário */}
+      {/* Dialog adicionar horario */}
       <Dialog open={!!dialogHorario} onOpenChange={open => { if (!open) setDialogHorario(null) }}>
         <DialogContent className="max-w-xs">
           <DialogHeader>
@@ -269,7 +287,7 @@ export function EditorGrade({ disciplinas, horarios, onUpdate, user }: Props) {
               {dialogHorario && `${DIAS[DIAS_NUM.indexOf(dialogHorario.dia)]}, ${dialogHorario.hora}`}
             </DialogDescription>
           </DialogHeader>
-          <div className="space-y-4 pt-2">
+          <div className="space-y-3 pt-1">
             <div className="space-y-1.5">
               <label className="text-xs font-medium text-muted-foreground">Disciplina</label>
               <Select value={selectedDisciplina} onValueChange={setSelectedDisciplina}>
@@ -280,7 +298,7 @@ export function EditorGrade({ disciplinas, horarios, onUpdate, user }: Props) {
                   {disciplinas.map(d => (
                     <SelectItem key={d.id} value={d.id}>
                       <span className="flex items-center gap-2">
-                        <span className="w-2 h-2 rounded-full" style={{ backgroundColor: d.cor }} />
+                        <span className="w-2 h-2 rounded-full flex-shrink-0" style={{ backgroundColor: d.cor }} />
                         {d.codigo || d.nome}
                       </span>
                     </SelectItem>
@@ -301,7 +319,7 @@ export function EditorGrade({ disciplinas, horarios, onUpdate, user }: Props) {
                 </SelectContent>
               </Select>
             </div>
-            <div className="flex gap-2 pt-3">
+            <div className="flex gap-2 pt-2">
               <Button variant="outline" size="sm" className="flex-1" onClick={() => setDialogHorario(null)}>
                 Cancelar
               </Button>
