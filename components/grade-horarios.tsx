@@ -1,10 +1,15 @@
 'use client'
 
 import { useState, useMemo } from 'react'
+import { createClient } from '@/lib/supabase/client'
 import { Horario } from '@/lib/types'
 import { cn } from '@/lib/utils'
-import { ChevronDown, ChevronUp } from 'lucide-react'
+import { ChevronDown, ChevronUp, Trash2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
+} from '@/components/ui/alert-dialog'
 
 const HORAS_DIA = [
   '08:00', '08:30', '09:00', '09:30',
@@ -20,10 +25,23 @@ const DIAS_NUM = [1, 2, 3, 4, 5]
 interface GradeHorariosProps {
   horarios: Horario[]
   onSelectDisciplina: (disciplinaId: string) => void
+  onUpdate?: () => void
 }
 
-export function GradeHorarios({ horarios, onSelectDisciplina }: GradeHorariosProps) {
+export function GradeHorarios({ horarios, onSelectDisciplina, onUpdate }: GradeHorariosProps) {
+  const supabase = createClient()
   const [expandido, setExpandido] = useState(false)
+  const [confirmDelete, setConfirmDelete] = useState<Horario | null>(null)
+  const [removendo, setRemovendo] = useState(false)
+
+  const handleRemover = async () => {
+    if (!confirmDelete) return
+    setRemovendo(true)
+    await supabase.from('horarios').delete().eq('id', confirmDelete.id)
+    setConfirmDelete(null)
+    setRemovendo(false)
+    onUpdate?.()
+  }
 
   const temHorarioNoturno = useMemo(
     () => horarios.some(h => h.hora_inicio >= '18:00'),
@@ -99,8 +117,8 @@ export function GradeHorarios({ horarios, onSelectDisciplina }: GradeHorariosPro
                         key={`${dia}-${hora}`}
                         rowSpan={rowSpan}
                         className={cn(
-                          'border-l border-t border-border p-1 text-center transition-colors',
-                          horario && 'cursor-pointer hover:opacity-80'
+                          'border-l border-t border-border p-1 text-center transition-colors relative group/cell',
+                          horario && 'cursor-pointer hover:opacity-90'
                         )}
                         style={{
                           minHeight: `${rowSpan * 36}px`,
@@ -133,6 +151,14 @@ export function GradeHorarios({ horarios, onSelectDisciplina }: GradeHorariosPro
                                 {horario.hora_inicio}–{horario.hora_fim}
                               </span>
                             )}
+                            {/* Botão remover */}
+                            <button
+                              onClick={e => { e.stopPropagation(); setConfirmDelete(horario) }}
+                              className="absolute top-0.5 right-0.5 w-5 h-5 rounded border border-destructive/60 flex items-center justify-center text-destructive hover:bg-destructive/20 transition-all sm:opacity-0 sm:group-hover/cell:opacity-100"
+                              title="Remover horário"
+                            >
+                              <Trash2 className="h-3 w-3" />
+                            </button>
                           </div>
                         )}
                       </td>
@@ -159,6 +185,31 @@ export function GradeHorarios({ horarios, onSelectDisciplina }: GradeHorariosPro
           )}
         </Button>
       )}
+      <AlertDialog open={!!confirmDelete} onOpenChange={open => !open && setConfirmDelete(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Remover horário</AlertDialogTitle>
+            <AlertDialogDescription>
+              Tem certeza que deseja remover{' '}
+              <span className="font-semibold text-foreground">
+                {confirmDelete?.disciplina?.nome || confirmDelete?.disciplina?.codigo}
+              </span>{' '}
+              de {confirmDelete?.hora_inicio}
+              {confirmDelete?.hora_fim ? ` – ${confirmDelete.hora_fim}` : ''}? Esta ação não pode ser desfeita.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleRemover}
+              disabled={removendo}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {removendo ? 'Removendo...' : 'Remover'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   )
 }
