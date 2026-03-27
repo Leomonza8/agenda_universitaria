@@ -5,7 +5,7 @@ import { createClient } from '@/lib/supabase/client'
 import { getSession } from '@/lib/auth'
 import { Disciplina, Horario } from '@/lib/types'
 import { Button } from '@/components/ui/button'
-import { Trash2, GripVertical, Plus, ChevronDown, X } from 'lucide-react'
+import { Trash2, GripVertical, Plus, ChevronDown, X, Download } from 'lucide-react'
 import {
   Dialog,
   DialogContent,
@@ -13,12 +13,22 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog'
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 
 const DIAS = ['Seg', 'Ter', 'Qua', 'Qui', 'Sex']
 const DIAS_NUM = [1, 2, 3, 4, 5]
 const HORAS_DIA = [
-  '07:00', '07:30', '08:00', '08:30', '09:00', '09:30',
+  '08:00', '08:30', '09:00', '09:30',
   '10:00', '10:30', '11:00', '11:30', '12:00', '12:30',
   '13:00', '13:30', '14:00', '14:30', '15:00', '15:30',
   '16:00', '16:30', '17:00', '17:30',
@@ -38,11 +48,171 @@ export function EditorGrade({ disciplinas, horarios, onUpdate, user }: Props) {
   const [dragging, setDragging] = useState<string | null>(null)
   const [hoverCell, setHoverCell] = useState<{ dia: number; hora: string } | null>(null)
   const [saving, setSaving] = useState(false)
+  const [exportando, setExportando] = useState(false)
   const [dialogHorario, setDialogHorario] = useState<{ dia: number; hora: string } | null>(null)
   const [selectedDisciplina, setSelectedDisciplina] = useState('')
   const [horaFim, setHoraFim] = useState('')
   const [expandNoturno, setExpandNoturno] = useState(false)
+  const [confirmDelete, setConfirmDelete] = useState<Horario | null>(null)
   const dragRef = useRef<string | null>(null)
+
+  const handleExportarPDF = async () => {
+    setExportando(true)
+    
+    try {
+      const jspdfModule = await import('jspdf')
+      const jsPDF = jspdfModule.default
+      
+      const pdf = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' })
+      
+      // Titulo
+      pdf.setFontSize(16)
+      pdf.setTextColor(30, 30, 30)
+      pdf.text('Grade de Horarios', 14, 15)
+      pdf.setFontSize(9)
+      pdf.setTextColor(120, 120, 120)
+      pdf.text(`Exportado em ${new Date().toLocaleDateString('pt-BR')}`, 14, 21)
+      
+      // Config da tabela
+      const startY = 28
+      const startX = 14
+      const colWidth = 52
+      const rowHeight = 8
+      const horaColWidth = 18
+      
+      // Detectar se tem horarios noturnos para incluir automaticamente no PDF
+      const temNoturno = horarios.some(h => 
+        h.hora_inicio >= '18:00' || (h.hora_fim && h.hora_fim > '18:00')
+      )
+      const horas = temNoturno ? TODAS_HORAS : HORAS_DIA
+      
+      // Mapa para rastrear celulas ja desenhadas (para blocos multi-linha)
+      const celulasDesenhadas = new Set<string>()
+      
+      // Header - dias
+      pdf.setFillColor(240, 240, 240)
+      pdf.rect(startX, startY, horaColWidth + (colWidth * 5), rowHeight, 'F')
+      pdf.setFontSize(9)
+      pdf.setTextColor(50, 50, 50)
+      pdf.text('Hora', startX + 3, startY + 5.5)
+      DIAS.forEach((dia, i) => {
+        pdf.text(dia, startX + horaColWidth + (i * colWidth) + colWidth / 2, startY + 5.5, { align: 'center' })
+      })
+      
+      // Primeiro desenha bordas e fundo
+      const tableHeight = rowHeight + (horas.length * rowHeight)
+      
+      // Fundo alternado das linhas
+      horas.forEach((hora, rowIdx) => {
+        const y = startY + rowHeight + (rowIdx * rowHeight)
+        if (rowIdx % 2 === 0) {
+          pdf.setFillColor(250, 250, 250)
+          pdf.rect(startX, y, horaColWidth + (colWidth * 5), rowHeight, 'F')
+        }
+      })
+      
+      // Bordas da tabela
+      pdf.setDrawColor(200, 200, 200)
+      pdf.setLineWidth(0.3)
+      pdf.rect(startX, startY, horaColWidth + (colWidth * 5), tableHeight)
+      
+      // Linhas horizontais
+      for (let i = 0; i <= horas.length; i++) {
+        const y = startY + rowHeight + (i * rowHeight)
+        pdf.line(startX, y, startX + horaColWidth + (colWidth * 5), y)
+      }
+      
+      // Linhas verticais
+      pdf.line(startX + horaColWidth, startY, startX + horaColWidth, startY + tableHeight)
+      for (let i = 1; i <= 5; i++) {
+        const x = startX + horaColWidth + (i * colWidth)
+        pdf.line(x, startY, x, startY + tableHeight)
+      }
+      
+      // Coluna das horas
+      horas.forEach((hora, rowIdx) => {
+        const y = startY + rowHeight + (rowIdx * rowHeight)
+        pdf.setFontSize(8)
+        pdf.setTextColor(100, 100, 100)
+        pdf.text(hora, startX + 3, y + 5.5)
+      })
+      
+      // Desenhar blocos de disciplinas
+      horarios.forEach(horario => {
+        const disc = disciplinas.find(d => d.id === horario.disciplina_id)
+        if (!disc) return
+        
+        const colIdx = DIAS_NUM.indexOf(horario.dia_semana)
+        if (colIdx < 0) return
+        
+        const rowIdxInicio = horas.indexOf(horario.hora_inicio)
+        if (rowIdxInicio < 0) return
+        
+        // Calcular fim: contar quantas linhas da lista `horas` estão entre inicio e fim
+        let rowIdxFim = rowIdxInicio + 1
+        if (horario.hora_fim) {
+          // Contar slots dentro da lista horas que estão >= inicio e < fim
+          const slotsNoBloco = horas.filter(h => h >= horario.hora_inicio && h < horario.hora_fim!).length
+          if (slotsNoBloco > 0) rowIdxFim = rowIdxInicio + slotsNoBloco
+        }
+        
+        const chave = `${horario.dia_semana}-${horario.hora_inicio}`
+        if (celulasDesenhadas.has(chave)) return
+        celulasDesenhadas.add(chave)
+        
+        const x = startX + horaColWidth + (colIdx * colWidth)
+        const y = startY + rowHeight + (rowIdxInicio * rowHeight)
+        const blocoHeight = (rowIdxFim - rowIdxInicio) * rowHeight
+        
+        // Cor da disciplina
+        const cor = disc.cor || '#3b82f6'
+        const r = parseInt(cor.slice(1, 3), 16)
+        const g = parseInt(cor.slice(3, 5), 16)
+        const b = parseInt(cor.slice(5, 7), 16)
+        
+        // Fundo colorido claro (misturar com branco para simular 20% de opacidade)
+        const rClaro = Math.round(r + (255 - r) * 0.8)
+        const gClaro = Math.round(g + (255 - g) * 0.8)
+        const bClaro = Math.round(b + (255 - b) * 0.8)
+        pdf.setFillColor(rClaro, gClaro, bClaro)
+        pdf.rect(x + 1, y + 0.5, colWidth - 2, blocoHeight - 1, 'F')
+        
+        // Borda esquerda colorida
+        pdf.setFillColor(r, g, b)
+        pdf.rect(x + 1, y + 0.5, 2, blocoHeight - 1, 'F')
+        
+        // Texto - usar cor escura para contraste
+        pdf.setTextColor(40, 40, 40)
+        const textoY = y + (blocoHeight / 2)
+        
+        if (disc.nome) {
+          pdf.setFontSize(6)
+          const nomeExibir = disc.nome.length > 22 ? disc.nome.substring(0, 20) + '...' : disc.nome
+          pdf.text(nomeExibir, x + colWidth / 2 + 1, textoY - 1, { align: 'center' })
+        }
+        
+        pdf.setFontSize(8)
+        pdf.setFont(undefined, 'bold')
+        pdf.text(disc.codigo || disc.nome || '', x + colWidth / 2 + 1, textoY + 3, { align: 'center' })
+        pdf.setFont(undefined, 'normal')
+        
+        // Horario
+        if (blocoHeight > 12) {
+          pdf.setFontSize(5)
+          pdf.setTextColor(100, 100, 100)
+          pdf.text(`${horario.hora_inicio} - ${horario.hora_fim || ''}`, x + colWidth / 2 + 1, textoY + 6.5, { align: 'center' })
+        }
+      })
+      
+      pdf.save('grade-horarios.pdf')
+      
+    } catch (err) {
+      console.error('[v0] Erro ao exportar PDF:', err)
+      alert('Erro ao exportar PDF')
+    }
+    
+    setExportando(false)
+  }
 
   const horasExibidas = expandNoturno ? TODAS_HORAS : HORAS_DIA
 
@@ -117,8 +287,10 @@ export function EditorGrade({ disciplinas, horarios, onUpdate, user }: Props) {
     onUpdate()
   }
 
-  const handleRemoverHorario = async (horarioId: string) => {
-    await supabase.from('horarios').delete().eq('id', horarioId)
+  const handleRemoverHorario = async () => {
+    if (!confirmDelete) return
+    await supabase.from('horarios').delete().eq('id', confirmDelete.id)
+    setConfirmDelete(null)
     onUpdate()
   }
 
@@ -162,6 +334,19 @@ export function EditorGrade({ disciplinas, horarios, onUpdate, user }: Props) {
 
       {/* Grade */}
       <div className="bg-card border border-border/60 rounded-lg overflow-hidden shadow-sm">
+        <div className="flex items-center justify-between px-3 py-2 border-b border-border/40 bg-muted/30">
+          <span className="text-xs font-medium text-muted-foreground">Grade de Horarios</span>
+          <Button
+            variant="outline"
+            size="sm"
+            className="h-7 text-xs gap-1.5"
+            onClick={handleExportarPDF}
+            disabled={exportando || horarios.length === 0}
+          >
+            <Download className="h-3.5 w-3.5" />
+            {exportando ? 'Exportando...' : 'Exportar PDF'}
+          </Button>
+        </div>
         <div className="overflow-x-auto">
           <table className="border-collapse w-full" style={{ minWidth: 380 }}>
             <thead>
@@ -231,9 +416,9 @@ export function EditorGrade({ disciplinas, horarios, onUpdate, user }: Props) {
                                 </span>
                               )}
                               <button
-                                className="absolute top-0.5 right-0.5 opacity-0 group-hover/bloco:opacity-100 transition-opacity bg-destructive/80 hover:bg-destructive text-white rounded p-0.5"
-                                onClick={() => handleRemoverHorario(horario.id)}
-                                title="Remover"
+                                className="absolute top-0.5 right-0.5 bg-destructive text-white rounded p-0.5 transition-opacity opacity-100 sm:opacity-0 sm:group-hover/bloco:opacity-100"
+                                onClick={e => { e.stopPropagation(); setConfirmDelete(horario) }}
+                                title="Remover horario"
                               >
                                 <X className="h-2.5 w-2.5" />
                               </button>
@@ -282,6 +467,35 @@ export function EditorGrade({ disciplinas, horarios, onUpdate, user }: Props) {
           </table>
         </div>
       </div>
+
+      {/* AlertDialog confirmar remocao */}
+      <AlertDialog open={!!confirmDelete} onOpenChange={open => !open && setConfirmDelete(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Remover horario</AlertDialogTitle>
+            <AlertDialogDescription>
+              Tem certeza que deseja remover{' '}
+              <span className="font-semibold text-foreground">
+                {(() => {
+                  const disc = disciplinas.find(d => d.id === confirmDelete?.disciplina_id)
+                  return disc?.nome || disc?.codigo || 'este horario'
+                })()}
+              </span>
+              {confirmDelete && ` de ${confirmDelete.hora_inicio}${confirmDelete.hora_fim ? ` ate ${confirmDelete.hora_fim}` : ''}`}?
+              {' '}Esta acao nao pode ser desfeita.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleRemoverHorario}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              Remover
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       {/* Dialog adicionar horario */}
       <Dialog open={!!dialogHorario} onOpenChange={open => { if (!open) setDialogHorario(null) }}>

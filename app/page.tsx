@@ -17,7 +17,7 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
-import { BookOpen, CheckSquare, User, LogOut, Shield, Settings } from 'lucide-react'
+import { BookOpen, CheckSquare, User, LogOut, Shield, Settings, ArrowLeftRight } from 'lucide-react'
 import { parseISO, format } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
 
@@ -129,6 +129,14 @@ export default function Home() {
                   <span>{totalPendentes} pendente{totalPendentes > 1 ? 's' : ''}</span>
                 </div>
               )}
+              <button
+                onClick={() => router.push('/bullet-journal')}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium bg-muted hover:bg-muted/80 text-muted-foreground hover:text-foreground transition-colors border border-border/60"
+                title="Ir para Agenda Rapida"
+              >
+                <ArrowLeftRight className="h-3.5 w-3.5" />
+                <span>Agenda Rapida</span>
+              </button>
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <Button variant="ghost" size="sm" className="gap-2 font-medium">

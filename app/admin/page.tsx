@@ -8,7 +8,7 @@ import { Input } from '@/components/ui/input'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Badge } from '@/components/ui/badge'
-import { ArrowLeft, Plus, Trash2, Shield } from 'lucide-react'
+import { ArrowLeft, Plus, Trash2, Shield, Sparkles, BookOpen } from 'lucide-react'
 
 interface User {
   id: string
@@ -184,7 +184,35 @@ export default function AdminPage() {
         </div>
       </div>
 
-      <div className="max-w-4xl mx-auto px-4 py-6">
+      <div className="max-w-4xl mx-auto px-4 py-6 space-y-6">
+        {/* Card Bullet Journal Concept */}
+        <Card className="border-dashed border-2 border-amber-300/50 bg-amber-50/30 dark:bg-amber-900/10">
+          <CardContent className="p-5">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-4">
+                <div className="h-12 w-12 rounded-xl bg-amber-100 dark:bg-amber-900/30 flex items-center justify-center">
+                  <BookOpen className="h-6 w-6 text-amber-600" />
+                </div>
+                <div>
+                  <div className="flex items-center gap-2">
+                    <h3 className="font-semibold">Bullet Journal</h3>
+                    <Badge variant="outline" className="text-[10px] bg-amber-100 text-amber-700 border-amber-300">
+                      <Sparkles className="h-3 w-3 mr-1" />
+                      Conceito
+                    </Badge>
+                  </div>
+                  <p className="text-sm text-muted-foreground">
+                    Visao futura: agenda universitaria como BuJo digital
+                  </p>
+                </div>
+              </div>
+              <Button onClick={() => router.push('/admin/bullet-journal')}>
+                Ver conceito
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+
         <Card>
           <CardHeader>
             <CardTitle>Usuarios Cadastrados</CardTitle>

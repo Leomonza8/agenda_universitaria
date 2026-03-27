@@ -7,7 +7,7 @@ import { ChevronDown, ChevronUp } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 
 const HORAS_DIA = [
-  '07:00', '07:30', '08:00', '08:30', '09:00', '09:30',
+  '08:00', '08:30', '09:00', '09:30',
   '10:00', '10:30', '11:00', '11:30', '12:00', '12:30',
   '13:00', '13:30', '14:00', '14:30', '15:00', '15:30',
   '16:00', '16:30', '17:00', '17:30',
@@ -25,31 +25,36 @@ interface GradeHorariosProps {
 export function GradeHorarios({ horarios, onSelectDisciplina }: GradeHorariosProps) {
   const [expandido, setExpandido] = useState(false)
 
+  // Precisa exibir noturno se algum horário começa OU termina depois das 18h
   const temHorarioNoturno = useMemo(
-    () => horarios.some(h => h.hora_inicio >= '18:00'),
+    () => horarios.some(h => h.hora_inicio >= '18:00' || (h.hora_fim && h.hora_fim > '18:00')),
     [horarios]
   )
 
   const horasExibidas = expandido ? TODAS_HORAS : HORAS_DIA
 
-  // Retorna o horário cuja hora_inicio coincide com esta célula (célula raiz do bloco)
   const getHorarioInicio = (dia: number, hora: string) =>
     horarios.find(h => h.dia_semana === dia && h.hora_inicio === hora)
 
-  // Verifica se esta célula está coberta por um rowSpan de uma linha anterior
   const isCelulaOcupada = (dia: number, hora: string): boolean =>
     horarios.some(h => {
       if (h.dia_semana !== dia || h.hora_inicio === hora || !h.hora_fim) return false
       return hora > h.hora_inicio && hora < h.hora_fim
     })
 
-  // Calcula quantas linhas o bloco deve ocupar
+  // Calcula rowSpan limitado às horas exibidas para não quebrar a tabela
   const calcRowSpan = (horario: Horario): number => {
     if (!horario.hora_fim) return 1
-    const idxInicio = TODAS_HORAS.indexOf(horario.hora_inicio)
-    const idxFim = TODAS_HORAS.indexOf(horario.hora_fim)
-    if (idxInicio < 0 || idxFim <= idxInicio) return 1
-    return idxFim - idxInicio
+    const idxInicio = horasExibidas.indexOf(horario.hora_inicio)
+    // hora_fim pode estar fora de HORAS_DIA; usamos TODAS_HORAS para encontrar o índice real
+    const idxFimTotal = TODAS_HORAS.indexOf(horario.hora_fim)
+    const idxInicioTotal = TODAS_HORAS.indexOf(horario.hora_inicio)
+    if (idxInicio < 0 || idxInicioTotal < 0 || idxFimTotal <= idxInicioTotal) return 1
+    // Quantas linhas das horasExibidas este bloco ocupa
+    const span = horasExibidas.filter(
+      h => h >= horario.hora_inicio && h < horario.hora_fim!
+    ).length
+    return Math.max(1, span)
   }
 
   if (horarios.length === 0) {
@@ -99,8 +104,8 @@ export function GradeHorarios({ horarios, onSelectDisciplina }: GradeHorariosPro
                         key={`${dia}-${hora}`}
                         rowSpan={rowSpan}
                         className={cn(
-                          'border-l border-t border-border p-1 text-center transition-colors',
-                          horario && 'cursor-pointer hover:opacity-80'
+                          'border-l border-t border-border p-1 text-center transition-colors relative group/cell',
+                          horario && 'cursor-pointer hover:opacity-90'
                         )}
                         style={{
                           minHeight: `${rowSpan * 36}px`,
@@ -133,6 +138,7 @@ export function GradeHorarios({ horarios, onSelectDisciplina }: GradeHorariosPro
                                 {horario.hora_inicio}–{horario.hora_fim}
                               </span>
                             )}
+
                           </div>
                         )}
                       </td>
@@ -159,6 +165,7 @@ export function GradeHorarios({ horarios, onSelectDisciplina }: GradeHorariosPro
           )}
         </Button>
       )}
+
     </div>
   )
 }
