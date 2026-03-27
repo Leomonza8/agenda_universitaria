@@ -13,6 +13,16 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog'
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 
 const DIAS = ['Seg', 'Ter', 'Qua', 'Qui', 'Sex']
@@ -43,6 +53,7 @@ export function EditorGrade({ disciplinas, horarios, onUpdate, user }: Props) {
   const [selectedDisciplina, setSelectedDisciplina] = useState('')
   const [horaFim, setHoraFim] = useState('')
   const [expandNoturno, setExpandNoturno] = useState(false)
+  const [confirmDelete, setConfirmDelete] = useState<Horario | null>(null)
   const dragRef = useRef<string | null>(null)
 
   const handleExportarPDF = async () => {
@@ -137,13 +148,12 @@ export function EditorGrade({ disciplinas, horarios, onUpdate, user }: Props) {
         const rowIdxInicio = horas.indexOf(horario.hora_inicio)
         if (rowIdxInicio < 0) return
         
-        // Calcular fim
+        // Calcular fim: contar quantas linhas da lista `horas` estão entre inicio e fim
         let rowIdxFim = rowIdxInicio + 1
         if (horario.hora_fim) {
-          const fimIdx = horas.indexOf(horario.hora_fim)
-          if (fimIdx > rowIdxInicio) {
-            rowIdxFim = fimIdx
-          }
+          // Contar slots dentro da lista horas que estão >= inicio e < fim
+          const slotsNoBloco = horas.filter(h => h >= horario.hora_inicio && h < horario.hora_fim!).length
+          if (slotsNoBloco > 0) rowIdxFim = rowIdxInicio + slotsNoBloco
         }
         
         const chave = `${horario.dia_semana}-${horario.hora_inicio}`
@@ -277,8 +287,10 @@ export function EditorGrade({ disciplinas, horarios, onUpdate, user }: Props) {
     onUpdate()
   }
 
-  const handleRemoverHorario = async (horarioId: string) => {
-    await supabase.from('horarios').delete().eq('id', horarioId)
+  const handleRemoverHorario = async () => {
+    if (!confirmDelete) return
+    await supabase.from('horarios').delete().eq('id', confirmDelete.id)
+    setConfirmDelete(null)
     onUpdate()
   }
 
@@ -404,9 +416,9 @@ export function EditorGrade({ disciplinas, horarios, onUpdate, user }: Props) {
                                 </span>
                               )}
                               <button
-                                className="absolute top-0.5 right-0.5 bg-destructive text-white rounded p-0.5 opacity-100 sm:opacity-0 sm:group-hover/bloco:opacity-100 transition-opacity"
-                                onClick={e => { e.stopPropagation(); handleRemoverHorario(horario.id) }}
-                                title="Remover"
+                                className="absolute top-0.5 right-0.5 bg-destructive text-white rounded p-0.5 transition-opacity opacity-100 sm:opacity-0 sm:group-hover/bloco:opacity-100"
+                                onClick={e => { e.stopPropagation(); setConfirmDelete(horario) }}
+                                title="Remover horario"
                               >
                                 <X className="h-2.5 w-2.5" />
                               </button>
@@ -455,6 +467,35 @@ export function EditorGrade({ disciplinas, horarios, onUpdate, user }: Props) {
           </table>
         </div>
       </div>
+
+      {/* AlertDialog confirmar remocao */}
+      <AlertDialog open={!!confirmDelete} onOpenChange={open => !open && setConfirmDelete(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Remover horario</AlertDialogTitle>
+            <AlertDialogDescription>
+              Tem certeza que deseja remover{' '}
+              <span className="font-semibold text-foreground">
+                {(() => {
+                  const disc = disciplinas.find(d => d.id === confirmDelete?.disciplina_id)
+                  return disc?.nome || disc?.codigo || 'este horario'
+                })()}
+              </span>
+              {confirmDelete && ` de ${confirmDelete.hora_inicio}${confirmDelete.hora_fim ? ` ate ${confirmDelete.hora_fim}` : ''}`}?
+              {' '}Esta acao nao pode ser desfeita.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleRemoverHorario}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              Remover
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       {/* Dialog adicionar horario */}
       <Dialog open={!!dialogHorario} onOpenChange={open => { if (!open) setDialogHorario(null) }}>
