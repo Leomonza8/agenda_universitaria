@@ -4,13 +4,13 @@ import { useRouter } from 'next/navigation'
 import { BookOpen, Zap, ArrowRight, LogOut } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-import { logout } from '@/lib/auth'
+import { clearSession } from '@/lib/auth'
 
 export default function EscolherPage() {
   const router = useRouter()
 
-  const handleLogout = async () => {
-    await logout()
+  const handleLogout = () => {
+    clearSession()
     router.push('/auth/login')
   }
 
@@ -36,7 +36,7 @@ export default function EscolherPage() {
       {/* Opções */}
       <div className="grid md:grid-cols-2 gap-6 max-w-2xl w-full mb-8">
         {/* Agenda Completa */}
-        <Card className="border-2 hover:border-primary/50 transition-all cursor-pointer hover:shadow-lg group" onClick={() => router.push('/dashboard')}>
+        <Card className="border-2 hover:border-primary/50 transition-all cursor-pointer hover:shadow-lg group" onClick={() => router.push('/')}>
           <CardHeader className="pb-3">
             <div className="flex items-start justify-between mb-2">
               <div className="h-12 w-12 rounded-lg bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center group-hover:scale-110 transition-transform">
