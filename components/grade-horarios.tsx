@@ -154,7 +154,7 @@ export function GradeHorarios({ horarios, onSelectDisciplina, onUpdate }: GradeH
                             {/* Botão remover */}
                             <button
                               onClick={e => { e.stopPropagation(); setConfirmDelete(horario) }}
-                              className="absolute top-0.5 right-0.5 w-5 h-5 rounded border border-destructive/60 flex items-center justify-center text-destructive hover:bg-destructive/20 transition-all sm:opacity-0 sm:group-hover/cell:opacity-100"
+                              className="absolute top-0.5 right-0.5 w-5 h-5 rounded border border-destructive/60 flex items-center justify-center text-destructive hover:bg-destructive/20 transition-all"
                               title="Remover horário"
                             >
                               <Trash2 className="h-3 w-3" />
