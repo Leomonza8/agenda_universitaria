@@ -1,9 +1,9 @@
--- Tabelas do Bullet Journal
+-- Tabelas do Bullet Journal (sem foreign keys para evitar erros)
 
 -- Daily Log: entradas diarias (tarefas, eventos, notas)
 CREATE TABLE IF NOT EXISTS bujo_entradas (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  user_id UUID NOT NULL,
   data DATE NOT NULL DEFAULT CURRENT_DATE,
   tipo VARCHAR(20) NOT NULL CHECK (tipo IN ('tarefa', 'evento', 'nota')),
   texto TEXT NOT NULL,
@@ -16,7 +16,7 @@ CREATE TABLE IF NOT EXISTS bujo_entradas (
 -- Habit Tracker: habitos para acompanhar
 CREATE TABLE IF NOT EXISTS bujo_habitos (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  user_id UUID NOT NULL,
   nome VARCHAR(100) NOT NULL,
   icone VARCHAR(50) DEFAULT 'circle',
   cor VARCHAR(20) DEFAULT '#3b82f6',
@@ -27,8 +27,8 @@ CREATE TABLE IF NOT EXISTS bujo_habitos (
 -- Habit Log: registro diario dos habitos
 CREATE TABLE IF NOT EXISTS bujo_habitos_log (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  habito_id UUID NOT NULL REFERENCES bujo_habitos(id) ON DELETE CASCADE,
-  user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  habito_id UUID NOT NULL,
+  user_id UUID NOT NULL,
   data DATE NOT NULL DEFAULT CURRENT_DATE,
   concluido BOOLEAN DEFAULT FALSE,
   UNIQUE(habito_id, data)
@@ -37,7 +37,7 @@ CREATE TABLE IF NOT EXISTS bujo_habitos_log (
 -- Mood Tracker: registro de humor
 CREATE TABLE IF NOT EXISTS bujo_humor (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  user_id UUID NOT NULL,
   data DATE NOT NULL DEFAULT CURRENT_DATE,
   nivel INT NOT NULL CHECK (nivel >= 1 AND nivel <= 5),
   nota TEXT,
@@ -47,7 +47,7 @@ CREATE TABLE IF NOT EXISTS bujo_humor (
 -- Collections: listas personalizadas
 CREATE TABLE IF NOT EXISTS bujo_colecoes (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  user_id UUID NOT NULL,
   titulo VARCHAR(100) NOT NULL,
   cor VARCHAR(20) DEFAULT '#8b5cf6',
   icone VARCHAR(50) DEFAULT 'list',
@@ -57,8 +57,8 @@ CREATE TABLE IF NOT EXISTS bujo_colecoes (
 -- Collection Items: itens das colecoes
 CREATE TABLE IF NOT EXISTS bujo_colecoes_itens (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  colecao_id UUID NOT NULL REFERENCES bujo_colecoes(id) ON DELETE CASCADE,
-  user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  colecao_id UUID NOT NULL,
+  user_id UUID NOT NULL,
   texto TEXT NOT NULL,
   concluido BOOLEAN DEFAULT FALSE,
   ordem INT DEFAULT 0,

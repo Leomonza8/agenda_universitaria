@@ -34,7 +34,7 @@ export default function LoginPage() {
       }
 
       setSession(data.user)
-      window.location.href = '/'
+      window.location.href = '/escolher'
     } catch {
       setError('Erro de conexao')
       setLoading(false)
