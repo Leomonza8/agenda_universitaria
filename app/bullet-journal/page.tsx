@@ -35,19 +35,25 @@ type TipoEntrada = 'tarefa' | 'evento' | 'nota'
 interface Entrada {
   id: string
   tipo: TipoEntrada
-  titulo: string
-  descricao?: string
+  conteudo: string
   concluida: boolean
   data: string
   user_id: string
-  criado_em: string
+  created_at: string
 }
 
 interface Habito {
   id: string
   nome: string
-  emoji: string
-  concluido_hoje: boolean
+  user_id: string
+  created_at: string
+}
+
+interface HabitoLog {
+  id: string
+  habito_id: string
+  data: string
+  concluida: boolean
 }
 
 export default function BulletJournalPage() {
@@ -59,6 +65,7 @@ export default function BulletJournalPage() {
   
   const [entradas, setEntradas] = useState<Entrada[]>([])
   const [habitos, setHabitos] = useState<Habito[]>([])
+  const [habitosLog, setHabitosLog] = useState<HabitoLog[]>([])
   const [novaEntrada, setNovaEntrada] = useState('')
   const [tipoEntrada, setTipoEntrada] = useState<TipoEntrada>('tarefa')
   const [confirmDelete, setConfirmDelete] = useState<Entrada | null>(null)
@@ -68,7 +75,7 @@ export default function BulletJournalPage() {
   const dataStr = format(dataSelecionada, 'yyyy-MM-dd')
   const dataFormatada = format(dataSelecionada, 'd MMMM yyyy', { locale: ptBR })
 
-  // Carregar dados
+  // Carregar dados ao montar
   useEffect(() => {
     const session = getSession()
     if (!session) {
@@ -80,98 +87,180 @@ export default function BulletJournalPage() {
     fetchHabitos(session.userId)
   }, [router])
 
-  const fetchEntradas = useCallback(async (uid: string) => {
-    // Carregar do localStorage primeiro (fallback)
-    const saved = localStorage.getItem(`bujo_entradas_${uid}`)
-    if (saved) {
-      try {
-        setEntradas(JSON.parse(saved))
-      } catch (e) {
-        console.error('[v0] Erro ao carregar localStorage:', e)
-      }
+  // Recarregar entradas quando mudar data
+  useEffect(() => {
+    if (userId) {
+      fetchEntradas(userId)
     }
+  }, [dataSelecionada])
+
+  const fetchEntradas = useCallback(async (uid: string) => {
+    const { data, error } = await supabase
+      .from('bujo_entradas')
+      .select('*')
+      .eq('user_id', uid)
+      .eq('data', dataStr)
+      .order('created_at', { ascending: true })
+    
+    if (error) {
+      console.error('[v0] Erro ao buscar entradas:', error)
+      return
+    }
+    
+    setEntradas(data || [])
     setLoading(false)
-  }, [])
+  }, [supabase, dataStr])
 
   const fetchHabitos = useCallback(async (uid: string) => {
-    const saved = localStorage.getItem(`bujo_habitos_${uid}`)
-    if (saved) {
-      try {
-        setHabitos(JSON.parse(saved))
-      } catch (e) {
-        console.error('[v0] Erro ao carregar localStorage habitos:', e)
-      }
+    const { data: habRes, error: habError } = await supabase
+      .from('bujo_habitos')
+      .select('*')
+      .eq('user_id', uid)
+      .order('created_at', { ascending: true })
+    
+    if (habError) {
+      console.error('[v0] Erro ao buscar habitos:', habError)
+      return
     }
-  }, [])
+    
+    setHabitos(habRes || [])
 
-  // Salvar entradas no localStorage
-  useEffect(() => {
-    if (!loading && userId) {
-      localStorage.setItem(`bujo_entradas_${userId}`, JSON.stringify(entradas))
+    // Buscar logs de habitos para hoje
+    const { data: logRes, error: logError } = await supabase
+      .from('bujo_habitos_log')
+      .select('*')
+      .eq('data', dataStr)
+    
+    if (logError) {
+      console.error('[v0] Erro ao buscar habitos log:', logError)
+      return
     }
-  }, [entradas, loading, userId])
+    
+    setHabitosLog(logRes || [])
+  }, [supabase, dataStr])
 
-  // Salvar habitos no localStorage
-  useEffect(() => {
-    if (!loading && userId) {
-      localStorage.setItem(`bujo_habitos_${userId}`, JSON.stringify(habitos))
-    }
-  }, [habitos, loading, userId])
-
-  const handleAdicionarEntrada = () => {
+  const handleAdicionarEntrada = async () => {
     if (!novaEntrada.trim() || !userId) return
-    const novaId = Date.now().toString()
-    const entrada: Entrada = {
-      id: novaId,
-      tipo: tipoEntrada,
-      titulo: novaEntrada,
-      descricao: '',
-      concluida: false,
-      data: dataStr,
-      user_id: userId,
-      criado_em: new Date().toISOString(),
+    
+    const { error } = await supabase
+      .from('bujo_entradas')
+      .insert({
+        user_id: userId,
+        data: dataStr,
+        tipo: tipoEntrada,
+        conteudo: novaEntrada,
+        concluida: false
+      })
+    
+    if (error) {
+      console.error('[v0] Erro ao adicionar entrada:', error)
+      return
     }
-    setEntradas([...entradas, entrada])
+
     setNovaEntrada('')
+    fetchEntradas(userId)
   }
 
-  const handleToggleConcluida = (id: string) => {
-    setEntradas(entradas.map(e => e.id === id ? { ...e, concluida: !e.concluida } : e))
-  }
-
-  const handleRemover = (entrada: Entrada) => {
-    setEntradas(entradas.filter(e => e.id !== entrada.id))
-    setConfirmDelete(null)
-  }
-
-  const handleAdicionarHabito = () => {
-    if (!novoHabito.trim() || !userId) return
-    const novoId = Date.now().toString()
-    const habito: Habito = {
-      id: novoId,
-      nome: novoHabito,
-      emoji: '⭐',
-      concluido_hoje: false,
+  const handleToggleConcluida = async (entrada: Entrada) => {
+    const { error } = await supabase
+      .from('bujo_entradas')
+      .update({ concluida: !entrada.concluida })
+      .eq('id', entrada.id)
+    
+    if (error) {
+      console.error('[v0] Erro ao atualizar entrada:', error)
+      return
     }
-    setHabitos([...habitos, habito])
+
+    fetchEntradas(userId!)
+  }
+
+  const handleRemover = async (entrada: Entrada) => {
+    const { error } = await supabase
+      .from('bujo_entradas')
+      .delete()
+      .eq('id', entrada.id)
+    
+    if (error) {
+      console.error('[v0] Erro ao remover entrada:', error)
+      return
+    }
+
+    setConfirmDelete(null)
+    fetchEntradas(userId!)
+  }
+
+  const handleAdicionarHabito = async () => {
+    if (!novoHabito.trim() || !userId) return
+    
+    const { error } = await supabase
+      .from('bujo_habitos')
+      .insert({
+        user_id: userId,
+        nome: novoHabito
+      })
+    
+    if (error) {
+      console.error('[v0] Erro ao adicionar habito:', error)
+      return
+    }
+
     setNovoHabito('')
     setMostrarAddHabito(false)
+    fetchHabitos(userId)
   }
 
-  const handleToggleHabito = (id: string) => {
-    setHabitos(habitos.map(h => h.id === id ? { ...h, concluido_hoje: !h.concluido_hoje } : h))
+  const handleToggleHabito = async (habito: Habito) => {
+    const existingLog = habitosLog.find(log => log.habito_id === habito.id && log.data === dataStr)
+    
+    if (existingLog) {
+      const { error } = await supabase
+        .from('bujo_habitos_log')
+        .delete()
+        .eq('id', existingLog.id)
+      
+      if (error) {
+        console.error('[v0] Erro ao remover habito log:', error)
+        return
+      }
+    } else {
+      const { error } = await supabase
+        .from('bujo_habitos_log')
+        .insert({
+          habito_id: habito.id,
+          data: dataStr,
+          concluida: true
+        })
+      
+      if (error) {
+        console.error('[v0] Erro ao adicionar habito log:', error)
+        return
+      }
+    }
+
+    fetchHabitos(userId!)
   }
 
-  const handleRemoverHabito = (id: string) => {
-    setHabitos(habitos.filter(h => h.id !== id))
+  const handleRemoverHabito = async (habitoId: string) => {
+    const { error } = await supabase
+      .from('bujo_habitos')
+      .delete()
+      .eq('id', habitoId)
+    
+    if (error) {
+      console.error('[v0] Erro ao remover habito:', error)
+      return
+    }
+
+    fetchHabitos(userId!)
   }
 
-  const entradasDia = entradas.filter(e => e.data === dataStr)
+  const entradasDia = entradas
   const tarefas = entradasDia.filter(e => e.tipo === 'tarefa')
   const eventos = entradasDia.filter(e => e.tipo === 'evento')
   const notas = entradasDia.filter(e => e.tipo === 'nota')
 
-  const habitosConcluidos = habitos.filter(h => h.concluido_hoje).length
+  const habitosConcluidos = habitosLog.length
   const progressoHabitos = habitos.length > 0 ? Math.round((habitosConcluidos / habitos.length) * 100) : 0
 
   if (loading) {
@@ -243,28 +332,30 @@ export default function BulletJournalPage() {
               />
             </div>
             <div className="space-y-2">
-              {habitos.map(habito => (
-                <div key={habito.id} className="flex items-center gap-3 p-2 rounded hover:bg-stone-100 dark:hover:bg-stone-800 transition-colors group">
-                  <button
-                    onClick={() => handleToggleHabito(habito.id)}
-                    className={`flex-shrink-0 w-6 h-6 rounded border-2 flex items-center justify-center transition-colors ${
-                      habito.concluido_hoje
-                        ? 'bg-green-500 border-green-500'
-                        : 'border-stone-300 dark:border-stone-700 hover:border-green-500'
-                    }`}
-                  >
-                    {habito.concluido_hoje && <Check className="h-4 w-4 text-white" />}
-                  </button>
-                  <span className="text-2xl">{habito.emoji}</span>
-                  <span className="flex-1 text-sm text-stone-900 dark:text-stone-100">{habito.nome}</span>
-                  <button
-                    onClick={() => handleRemoverHabito(habito.id)}
-                    className="opacity-0 group-hover:opacity-100 transition-opacity text-stone-400 hover:text-red-500 p-1"
-                  >
-                    <Trash2 className="h-4 w-4" />
-                  </button>
-                </div>
-              ))}
+              {habitos.map(habito => {
+                const isConcluido = habitosLog.some(log => log.habito_id === habito.id && log.data === dataStr && log.concluida)
+                return (
+                  <div key={habito.id} className="flex items-center gap-3 p-2 rounded hover:bg-stone-100 dark:hover:bg-stone-800 transition-colors group">
+                    <button
+                      onClick={() => handleToggleHabito(habito)}
+                      className={`flex-shrink-0 w-6 h-6 rounded border-2 flex items-center justify-center transition-colors ${
+                        isConcluido
+                          ? 'bg-green-500 border-green-500'
+                          : 'border-stone-300 dark:border-stone-700 hover:border-green-500'
+                      }`}
+                    >
+                      {isConcluido && <Check className="h-4 w-4 text-white" />}
+                    </button>
+                    <span className="flex-1 text-sm text-stone-900 dark:text-stone-100">{habito.nome}</span>
+                    <button
+                      onClick={() => handleRemoverHabito(habito.id)}
+                      className="opacity-0 group-hover:opacity-100 transition-opacity text-stone-400 hover:text-red-500 p-1"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </button>
+                  </div>
+                )
+              })}
             </div>
             {!mostrarAddHabito && (
               <button
@@ -331,7 +422,7 @@ export default function BulletJournalPage() {
                 {tarefas.map(entrada => (
                   <div key={entrada.id} className="flex items-center gap-3 p-2 rounded hover:bg-blue-50 dark:hover:bg-blue-900/20 group transition-colors">
                     <button
-                      onClick={() => handleToggleConcluida(entrada.id)}
+                      onClick={() => handleToggleConcluida(entrada)}
                       className={`flex-shrink-0 transition-colors ${
                         entrada.concluida ? 'text-blue-500' : 'text-stone-400 hover:text-blue-500'
                       }`}
@@ -343,7 +434,7 @@ export default function BulletJournalPage() {
                       )}
                     </button>
                     <span className={`flex-1 text-sm ${entrada.concluida ? 'line-through text-stone-500' : 'text-stone-900 dark:text-stone-100'}`}>
-                      {entrada.titulo}
+                      {entrada.conteudo}
                     </span>
                     <button
                       onClick={() => setConfirmDelete(entrada)}
@@ -368,7 +459,7 @@ export default function BulletJournalPage() {
                 {eventos.map(entrada => (
                   <div key={entrada.id} className="flex items-center gap-3 p-2 rounded hover:bg-amber-50 dark:hover:bg-amber-900/20 group transition-colors">
                     <button
-                      onClick={() => handleToggleConcluida(entrada.id)}
+                      onClick={() => handleToggleConcluida(entrada)}
                       className={`flex-shrink-0 transition-colors ${
                         entrada.concluida ? 'text-amber-500' : 'text-stone-400 hover:text-amber-500'
                       }`}
@@ -380,7 +471,7 @@ export default function BulletJournalPage() {
                       )}
                     </button>
                     <span className={`flex-1 text-sm ${entrada.concluida ? 'line-through text-stone-500' : 'text-stone-900 dark:text-stone-100'}`}>
-                      {entrada.titulo}
+                      {entrada.conteudo}
                     </span>
                     <button
                       onClick={() => setConfirmDelete(entrada)}
@@ -406,7 +497,7 @@ export default function BulletJournalPage() {
                   <div key={entrada.id} className="flex items-center gap-3 p-2 rounded hover:bg-green-50 dark:hover:bg-green-900/20 group transition-colors">
                     <span className="flex-shrink-0 text-green-500 text-sm font-bold">-</span>
                     <span className="flex-1 text-sm text-stone-900 dark:text-stone-100">
-                      {entrada.titulo}
+                      {entrada.conteudo}
                     </span>
                     <button
                       onClick={() => setConfirmDelete(entrada)}
@@ -434,7 +525,7 @@ export default function BulletJournalPage() {
           <AlertDialogHeader>
             <AlertDialogTitle>Remover anotação</AlertDialogTitle>
             <AlertDialogDescription>
-              Tem certeza que deseja remover "<span className="font-semibold">{confirmDelete?.titulo}</span>"?
+              Tem certeza que deseja remover "<span className="font-semibold">{confirmDelete?.conteudo}</span>"?
               Esta ação não pode ser desfeita.
             </AlertDialogDescription>
           </AlertDialogHeader>
