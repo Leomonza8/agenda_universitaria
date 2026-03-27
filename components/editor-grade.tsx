@@ -5,7 +5,7 @@ import { createClient } from '@/lib/supabase/client'
 import { getSession } from '@/lib/auth'
 import { Disciplina, Horario } from '@/lib/types'
 import { Button } from '@/components/ui/button'
-import { Trash2, GripVertical, Plus, ChevronDown, X } from 'lucide-react'
+import { Trash2, GripVertical, Plus, ChevronDown, X, Download } from 'lucide-react'
 import {
   Dialog,
   DialogContent,
@@ -38,11 +38,50 @@ export function EditorGrade({ disciplinas, horarios, onUpdate, user }: Props) {
   const [dragging, setDragging] = useState<string | null>(null)
   const [hoverCell, setHoverCell] = useState<{ dia: number; hora: string } | null>(null)
   const [saving, setSaving] = useState(false)
+  const [exportando, setExportando] = useState(false)
   const [dialogHorario, setDialogHorario] = useState<{ dia: number; hora: string } | null>(null)
   const [selectedDisciplina, setSelectedDisciplina] = useState('')
   const [horaFim, setHoraFim] = useState('')
   const [expandNoturno, setExpandNoturno] = useState(false)
   const dragRef = useRef<string | null>(null)
+  const gradeRef = useRef<HTMLDivElement>(null)
+
+  const handleExportarPDF = async () => {
+    if (!gradeRef.current) return
+    setExportando(true)
+    try {
+      const html2canvas = (await import('html2canvas')).default
+      const jsPDF = (await import('jspdf')).default
+
+      const canvas = await html2canvas(gradeRef.current, {
+        scale: 2,
+        useCORS: true,
+        backgroundColor: '#ffffff',
+        logging: false,
+      })
+
+      const imgWidth = 297 // A4 landscape width mm
+      const imgHeight = (canvas.height * imgWidth) / canvas.width
+      const pdf = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' })
+
+      pdf.setFontSize(14)
+      pdf.setTextColor(30, 30, 30)
+      pdf.text('Grade de Horarios', 14, 12)
+      pdf.setFontSize(9)
+      pdf.setTextColor(120, 120, 120)
+      pdf.text(`Exportado em ${new Date().toLocaleDateString('pt-BR')}`, 14, 18)
+
+      const marginTop = 24
+      const maxHeight = 210 - marginTop - 6 // A4 landscape height
+      const finalHeight = Math.min(imgHeight, maxHeight)
+
+      pdf.addImage(canvas.toDataURL('image/png'), 'PNG', 0, marginTop, imgWidth, finalHeight)
+      pdf.save('grade-horarios.pdf')
+    } catch (err) {
+      console.error('[v0] Erro ao exportar PDF:', err)
+    }
+    setExportando(false)
+  }
 
   const horasExibidas = expandNoturno ? TODAS_HORAS : HORAS_DIA
 
@@ -162,7 +201,20 @@ export function EditorGrade({ disciplinas, horarios, onUpdate, user }: Props) {
 
       {/* Grade */}
       <div className="bg-card border border-border/60 rounded-lg overflow-hidden shadow-sm">
-        <div className="overflow-x-auto">
+        <div className="flex items-center justify-between px-3 py-2 border-b border-border/40 bg-muted/30">
+          <span className="text-xs font-medium text-muted-foreground">Grade de Horarios</span>
+          <Button
+            variant="outline"
+            size="sm"
+            className="h-7 text-xs gap-1.5"
+            onClick={handleExportarPDF}
+            disabled={exportando || horarios.length === 0}
+          >
+            <Download className="h-3.5 w-3.5" />
+            {exportando ? 'Exportando...' : 'Exportar PDF'}
+          </Button>
+        </div>
+        <div ref={gradeRef} className="overflow-x-auto">
           <table className="border-collapse w-full" style={{ minWidth: 380 }}>
             <thead>
               <tr className="bg-muted/60">
