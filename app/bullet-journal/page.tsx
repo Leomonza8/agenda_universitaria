@@ -43,11 +43,12 @@ const TIPO_ICONE = {
 export default function BulletJournalPage() {
   const router = useRouter()
   const [loading, setLoading] = useState(true)
+  const [userId, setUserId] = useState<string | null>(null)
   const [dataSelecionada, setDataSelecionada] = useState(new Date())
   const dataStr = format(dataSelecionada, 'yyyy-MM-dd')
 
   const [entradas, setEntradas] = useState<Entrada[]>([])
-  const [habitos, setHabitos] = useState<Habito[]>(HABITOS_PADRAO)
+  const [habitos, setHabitos] = useState<Habito[]>([])
   const [novaEntrada, setNovaEntrada] = useState('')
   const [tipoEntrada, setTipoEntrada] = useState<'tarefa' | 'evento' | 'nota'>('tarefa')
   const [novoHabito, setNovoHabito] = useState('')
@@ -60,29 +61,38 @@ export default function BulletJournalPage() {
       return
     }
     
-    // Carregar dados do localStorage
-    const savedEntradas = localStorage.getItem('bujo_entradas')
-    const savedHabitos = localStorage.getItem('bujo_habitos')
+    setUserId(session.userId)
     
-    if (savedEntradas) setEntradas(JSON.parse(savedEntradas))
-    if (savedHabitos) setHabitos(JSON.parse(savedHabitos))
+    // Carregar dados do localStorage com chave unica por usuario
+    const savedEntradas = localStorage.getItem(`bujo_entradas_${session.userId}`)
+    const savedHabitos = localStorage.getItem(`bujo_habitos_${session.userId}`)
+    
+    if (savedEntradas) {
+      setEntradas(JSON.parse(savedEntradas))
+    }
+    if (savedHabitos) {
+      setHabitos(JSON.parse(savedHabitos))
+    } else {
+      // Criar habitos padrao se nao existir
+      setHabitos(HABITOS_PADRAO)
+    }
     
     setLoading(false)
   }, [router])
 
   // Salvar entradas no localStorage
   useEffect(() => {
-    if (!loading) {
-      localStorage.setItem('bujo_entradas', JSON.stringify(entradas))
+    if (!loading && userId) {
+      localStorage.setItem(`bujo_entradas_${userId}`, JSON.stringify(entradas))
     }
-  }, [entradas, loading])
+  }, [entradas, loading, userId])
 
   // Salvar habitos no localStorage
   useEffect(() => {
-    if (!loading) {
-      localStorage.setItem('bujo_habitos', JSON.stringify(habitos))
+    if (!loading && userId) {
+      localStorage.setItem(`bujo_habitos_${userId}`, JSON.stringify(habitos))
     }
-  }, [habitos, loading])
+  }, [habitos, loading, userId])
 
   const entradasDoDia = entradas.filter(e => e.data === dataStr)
 

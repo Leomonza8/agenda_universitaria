@@ -25,6 +25,14 @@ interface GradeHorariosProps {
 export function GradeHorarios({ horarios, onSelectDisciplina }: GradeHorariosProps) {
   const [expandido, setExpandido] = useState(false)
 
+  // Debug: ver horarios recebidos
+  console.log('[v0] GradeHorarios - horarios recebidos:', horarios.map(h => ({
+    id: h.id,
+    hora_inicio: h.hora_inicio,
+    hora_fim: h.hora_fim,
+    dia_semana: h.dia_semana
+  })))
+
   // Precisa exibir noturno se algum horário começa OU termina depois das 18h
   const temHorarioNoturno = useMemo(
     () => horarios.some(h => h.hora_inicio >= '18:00' || (h.hora_fim && h.hora_fim > '18:00')),
