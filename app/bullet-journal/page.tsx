@@ -6,8 +6,8 @@ import { getSession } from '@/lib/auth'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { 
-  ArrowLeft, Plus, Trash2, Check, Circle, Minus, Calendar,
-  ChevronLeft, ChevronRight, Sparkles, Target, Sun, Moon
+  Plus, Trash2, Check, Circle, Minus, Calendar,
+  ChevronLeft, ChevronRight, Sparkles, Target, Sun, ArrowLeftRight
 } from 'lucide-react'
 import { format, addDays, subDays } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
@@ -162,11 +162,13 @@ export default function BulletJournalPage() {
       <header className="border-b border-stone-200 dark:border-stone-800 bg-white dark:bg-stone-900 sticky top-0 z-20">
         <div className="max-w-3xl mx-auto px-6 py-4">
           <div className="flex items-center justify-between">
-            <button 
-              onClick={() => router.push('/escolher')} 
-              className="p-2 -ml-2 hover:bg-stone-100 dark:hover:bg-stone-800 rounded-full transition-colors"
+            <button
+              onClick={() => router.push('/')}
+              className="flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-medium bg-stone-100 dark:bg-stone-800 text-stone-600 dark:text-stone-400 hover:bg-stone-200 dark:hover:bg-stone-700 transition-colors"
+              title="Ir para Agenda Completa"
             >
-              <ArrowLeft className="h-5 w-5 text-stone-600 dark:text-stone-400" />
+              <ArrowLeftRight className="h-3.5 w-3.5" />
+              <span className="hidden sm:inline">Agenda Completa</span>
             </button>
 
             <div className="flex items-center gap-2">
