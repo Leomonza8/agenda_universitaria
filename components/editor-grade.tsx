@@ -53,8 +53,6 @@ export function EditorGrade({ disciplinas, horarios, onUpdate, user }: Props) {
       const jsPDF = jspdfModule.default
       
       const pdf = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' })
-      const pageWidth = 297
-      const pageHeight = 210
       
       // Titulo
       pdf.setFontSize(16)
@@ -69,79 +67,37 @@ export function EditorGrade({ disciplinas, horarios, onUpdate, user }: Props) {
       const startX = 14
       const colWidth = 52
       const rowHeight = 8
-      const horaColWidth = 16
+      const horaColWidth = 18
       const horas = expandNoturno ? TODAS_HORAS : HORAS_DIA
       
+      // Mapa para rastrear celulas ja desenhadas (para blocos multi-linha)
+      const celulasDesenhadas = new Set<string>()
+      
       // Header - dias
-      pdf.setFillColor(245, 245, 245)
+      pdf.setFillColor(240, 240, 240)
       pdf.rect(startX, startY, horaColWidth + (colWidth * 5), rowHeight, 'F')
       pdf.setFontSize(9)
-      pdf.setTextColor(80, 80, 80)
-      pdf.text('Hora', startX + 2, startY + 5.5)
+      pdf.setTextColor(50, 50, 50)
+      pdf.text('Hora', startX + 3, startY + 5.5)
       DIAS.forEach((dia, i) => {
         pdf.text(dia, startX + horaColWidth + (i * colWidth) + colWidth / 2, startY + 5.5, { align: 'center' })
       })
       
-      // Linhas de horario
+      // Primeiro desenha bordas e fundo
+      const tableHeight = rowHeight + (horas.length * rowHeight)
+      
+      // Fundo alternado das linhas
       horas.forEach((hora, rowIdx) => {
         const y = startY + rowHeight + (rowIdx * rowHeight)
-        
-        // Fundo alternado
         if (rowIdx % 2 === 0) {
-          pdf.setFillColor(252, 252, 252)
+          pdf.setFillColor(250, 250, 250)
           pdf.rect(startX, y, horaColWidth + (colWidth * 5), rowHeight, 'F')
         }
-        
-        // Hora
-        pdf.setFontSize(8)
-        pdf.setTextColor(120, 120, 120)
-        pdf.text(hora, startX + 2, y + 5.5)
-        
-        // Celulas dos dias
-        DIAS_NUM.forEach((dia, colIdx) => {
-          const horario = horarios.find(h => h.dia_semana === dia && h.hora_inicio === hora)
-          const disc = horario ? disciplinas.find(d => d.id === horario.disciplina_id) : null
-          
-          if (disc && horario) {
-            const x = startX + horaColWidth + (colIdx * colWidth)
-            
-            // Fundo colorido
-            const cor = disc.cor || '#3b82f6'
-            const r = parseInt(cor.slice(1, 3), 16)
-            const g = parseInt(cor.slice(3, 5), 16)
-            const b = parseInt(cor.slice(5, 7), 16)
-            
-            // Calcular altura do bloco
-            const horaFimIdx = horario.hora_fim ? horas.indexOf(horario.hora_fim) : rowIdx + 1
-            const blocoHeight = Math.max(1, horaFimIdx - rowIdx) * rowHeight
-            
-            pdf.setFillColor(r, g, b, 0.15)
-            pdf.rect(x + 1, y + 0.5, colWidth - 2, blocoHeight - 1, 'F')
-            
-            // Borda esquerda colorida
-            pdf.setFillColor(r, g, b)
-            pdf.rect(x + 1, y + 0.5, 1.5, blocoHeight - 1, 'F')
-            
-            // Texto
-            pdf.setFontSize(7)
-            pdf.setTextColor(r, g, b)
-            const textoY = y + (blocoHeight / 2) + 1
-            if (disc.nome) {
-              pdf.setFontSize(6)
-              pdf.text(disc.nome.substring(0, 20), x + colWidth / 2, textoY - 2, { align: 'center' })
-            }
-            pdf.setFontSize(8)
-            pdf.text(disc.codigo || '', x + colWidth / 2, textoY + 2, { align: 'center' })
-          }
-        })
       })
       
       // Bordas da tabela
-      pdf.setDrawColor(220, 220, 220)
-      pdf.setLineWidth(0.2)
-      
-      // Borda externa
-      const tableHeight = rowHeight + (horas.length * rowHeight)
+      pdf.setDrawColor(200, 200, 200)
+      pdf.setLineWidth(0.3)
       pdf.rect(startX, startY, horaColWidth + (colWidth * 5), tableHeight)
       
       // Linhas horizontais
@@ -156,6 +112,81 @@ export function EditorGrade({ disciplinas, horarios, onUpdate, user }: Props) {
         const x = startX + horaColWidth + (i * colWidth)
         pdf.line(x, startY, x, startY + tableHeight)
       }
+      
+      // Coluna das horas
+      horas.forEach((hora, rowIdx) => {
+        const y = startY + rowHeight + (rowIdx * rowHeight)
+        pdf.setFontSize(8)
+        pdf.setTextColor(100, 100, 100)
+        pdf.text(hora, startX + 3, y + 5.5)
+      })
+      
+      // Desenhar blocos de disciplinas
+      horarios.forEach(horario => {
+        const disc = disciplinas.find(d => d.id === horario.disciplina_id)
+        if (!disc) return
+        
+        const colIdx = DIAS_NUM.indexOf(horario.dia_semana)
+        if (colIdx < 0) return
+        
+        const rowIdxInicio = horas.indexOf(horario.hora_inicio)
+        if (rowIdxInicio < 0) return
+        
+        // Calcular fim
+        let rowIdxFim = rowIdxInicio + 1
+        if (horario.hora_fim) {
+          const fimIdx = horas.indexOf(horario.hora_fim)
+          if (fimIdx > rowIdxInicio) {
+            rowIdxFim = fimIdx
+          }
+        }
+        
+        const chave = `${horario.dia_semana}-${horario.hora_inicio}`
+        if (celulasDesenhadas.has(chave)) return
+        celulasDesenhadas.add(chave)
+        
+        const x = startX + horaColWidth + (colIdx * colWidth)
+        const y = startY + rowHeight + (rowIdxInicio * rowHeight)
+        const blocoHeight = (rowIdxFim - rowIdxInicio) * rowHeight
+        
+        // Cor da disciplina
+        const cor = disc.cor || '#3b82f6'
+        const r = parseInt(cor.slice(1, 3), 16)
+        const g = parseInt(cor.slice(3, 5), 16)
+        const b = parseInt(cor.slice(5, 7), 16)
+        
+        // Fundo colorido claro
+        pdf.setFillColor(r, g, b)
+        pdf.setGState(new jsPDF.GState({ opacity: 0.2 }))
+        pdf.rect(x + 1, y + 0.5, colWidth - 2, blocoHeight - 1, 'F')
+        pdf.setGState(new jsPDF.GState({ opacity: 1 }))
+        
+        // Borda esquerda colorida
+        pdf.setFillColor(r, g, b)
+        pdf.rect(x + 1, y + 0.5, 2, blocoHeight - 1, 'F')
+        
+        // Texto - usar cor escura para contraste
+        pdf.setTextColor(40, 40, 40)
+        const textoY = y + (blocoHeight / 2)
+        
+        if (disc.nome) {
+          pdf.setFontSize(6)
+          const nomeExibir = disc.nome.length > 22 ? disc.nome.substring(0, 20) + '...' : disc.nome
+          pdf.text(nomeExibir, x + colWidth / 2 + 1, textoY - 1, { align: 'center' })
+        }
+        
+        pdf.setFontSize(8)
+        pdf.setFont(undefined, 'bold')
+        pdf.text(disc.codigo || disc.nome || '', x + colWidth / 2 + 1, textoY + 3, { align: 'center' })
+        pdf.setFont(undefined, 'normal')
+        
+        // Horario
+        if (blocoHeight > 12) {
+          pdf.setFontSize(5)
+          pdf.setTextColor(100, 100, 100)
+          pdf.text(`${horario.hora_inicio} - ${horario.hora_fim || ''}`, x + colWidth / 2 + 1, textoY + 6.5, { align: 'center' })
+        }
+      })
       
       pdf.save('grade-horarios.pdf')
       
