@@ -68,7 +68,12 @@ export function EditorGrade({ disciplinas, horarios, onUpdate, user }: Props) {
       const colWidth = 52
       const rowHeight = 8
       const horaColWidth = 18
-      const horas = expandNoturno ? TODAS_HORAS : HORAS_DIA
+      
+      // Detectar se tem horarios noturnos para incluir automaticamente no PDF
+      const temNoturno = horarios.some(h => 
+        h.hora_inicio >= '18:00' || (h.hora_fim && h.hora_fim > '18:00')
+      )
+      const horas = temNoturno ? TODAS_HORAS : HORAS_DIA
       
       // Mapa para rastrear celulas ja desenhadas (para blocos multi-linha)
       const celulasDesenhadas = new Set<string>()
