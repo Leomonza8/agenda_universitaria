@@ -168,7 +168,7 @@ export default function BulletJournalPage() {
               title="Ir para Agenda Completa"
             >
               <ArrowLeftRight className="h-3.5 w-3.5" />
-              <span className="hidden sm:inline">Agenda Completa</span>
+              <span>Agenda Completa</span>
             </button>
 
             <div className="flex items-center gap-2">

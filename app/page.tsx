@@ -131,11 +131,11 @@ export default function Home() {
               )}
               <button
                 onClick={() => router.push('/bullet-journal')}
-                className="hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-medium bg-muted hover:bg-muted/80 text-muted-foreground hover:text-foreground transition-colors border border-border/60"
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium bg-muted hover:bg-muted/80 text-muted-foreground hover:text-foreground transition-colors border border-border/60"
                 title="Ir para Agenda Rapida"
               >
                 <ArrowLeftRight className="h-3.5 w-3.5" />
-                Agenda Rapida
+                <span>Agenda Rapida</span>
               </button>
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
