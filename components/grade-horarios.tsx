@@ -1,15 +1,10 @@
 'use client'
 
 import { useState, useMemo } from 'react'
-import { createClient } from '@/lib/supabase/client'
 import { Horario } from '@/lib/types'
 import { cn } from '@/lib/utils'
-import { ChevronDown, ChevronUp, Trash2 } from 'lucide-react'
+import { ChevronDown, ChevronUp } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import {
-  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
-  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
-} from '@/components/ui/alert-dialog'
 
 const HORAS_DIA = [
   '08:00', '08:30', '09:00', '09:30',
@@ -25,49 +20,41 @@ const DIAS_NUM = [1, 2, 3, 4, 5]
 interface GradeHorariosProps {
   horarios: Horario[]
   onSelectDisciplina: (disciplinaId: string) => void
-  onUpdate?: () => void
 }
 
-export function GradeHorarios({ horarios, onSelectDisciplina, onUpdate }: GradeHorariosProps) {
-  const supabase = createClient()
+export function GradeHorarios({ horarios, onSelectDisciplina }: GradeHorariosProps) {
   const [expandido, setExpandido] = useState(false)
-  const [confirmDelete, setConfirmDelete] = useState<Horario | null>(null)
-  const [removendo, setRemovendo] = useState(false)
 
-  const handleRemover = async () => {
-    if (!confirmDelete) return
-    setRemovendo(true)
-    await supabase.from('horarios').delete().eq('id', confirmDelete.id)
-    setConfirmDelete(null)
-    setRemovendo(false)
-    onUpdate?.()
-  }
-
+  // Precisa exibir noturno se algum horário começa OU termina depois das 18h
   const temHorarioNoturno = useMemo(
-    () => horarios.some(h => h.hora_inicio >= '18:00'),
+    () => horarios.some(h => h.hora_inicio >= '18:00' || (h.hora_fim && h.hora_fim > '18:00')),
     [horarios]
   )
 
   const horasExibidas = expandido ? TODAS_HORAS : HORAS_DIA
 
-  // Retorna o horário cuja hora_inicio coincide com esta célula (célula raiz do bloco)
   const getHorarioInicio = (dia: number, hora: string) =>
     horarios.find(h => h.dia_semana === dia && h.hora_inicio === hora)
 
-  // Verifica se esta célula está coberta por um rowSpan de uma linha anterior
   const isCelulaOcupada = (dia: number, hora: string): boolean =>
     horarios.some(h => {
       if (h.dia_semana !== dia || h.hora_inicio === hora || !h.hora_fim) return false
       return hora > h.hora_inicio && hora < h.hora_fim
     })
 
-  // Calcula quantas linhas o bloco deve ocupar
+  // Calcula rowSpan limitado às horas exibidas para não quebrar a tabela
   const calcRowSpan = (horario: Horario): number => {
     if (!horario.hora_fim) return 1
-    const idxInicio = TODAS_HORAS.indexOf(horario.hora_inicio)
-    const idxFim = TODAS_HORAS.indexOf(horario.hora_fim)
-    if (idxInicio < 0 || idxFim <= idxInicio) return 1
-    return idxFim - idxInicio
+    const idxInicio = horasExibidas.indexOf(horario.hora_inicio)
+    // hora_fim pode estar fora de HORAS_DIA; usamos TODAS_HORAS para encontrar o índice real
+    const idxFimTotal = TODAS_HORAS.indexOf(horario.hora_fim)
+    const idxInicioTotal = TODAS_HORAS.indexOf(horario.hora_inicio)
+    if (idxInicio < 0 || idxInicioTotal < 0 || idxFimTotal <= idxInicioTotal) return 1
+    // Quantas linhas das horasExibidas este bloco ocupa
+    const span = horasExibidas.filter(
+      h => h >= horario.hora_inicio && h < horario.hora_fim!
+    ).length
+    return Math.max(1, span)
   }
 
   if (horarios.length === 0) {
@@ -151,14 +138,7 @@ export function GradeHorarios({ horarios, onSelectDisciplina, onUpdate }: GradeH
                                 {horario.hora_inicio}–{horario.hora_fim}
                               </span>
                             )}
-                            {/* Botão remover */}
-                            <button
-                              onClick={e => { e.stopPropagation(); setConfirmDelete(horario) }}
-                              className="absolute top-0.5 right-0.5 w-5 h-5 rounded border border-destructive/60 flex items-center justify-center text-destructive hover:bg-destructive/20 transition-all"
-                              title="Remover horário"
-                            >
-                              <Trash2 className="h-3 w-3" />
-                            </button>
+
                           </div>
                         )}
                       </td>
@@ -185,31 +165,7 @@ export function GradeHorarios({ horarios, onSelectDisciplina, onUpdate }: GradeH
           )}
         </Button>
       )}
-      <AlertDialog open={!!confirmDelete} onOpenChange={open => !open && setConfirmDelete(null)}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Remover horário</AlertDialogTitle>
-            <AlertDialogDescription>
-              Tem certeza que deseja remover{' '}
-              <span className="font-semibold text-foreground">
-                {confirmDelete?.disciplina?.nome || confirmDelete?.disciplina?.codigo}
-              </span>{' '}
-              de {confirmDelete?.hora_inicio}
-              {confirmDelete?.hora_fim ? ` – ${confirmDelete.hora_fim}` : ''}? Esta ação não pode ser desfeita.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancelar</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={handleRemover}
-              disabled={removendo}
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-            >
-              {removendo ? 'Removendo...' : 'Remover'}
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+
     </div>
   )
 }

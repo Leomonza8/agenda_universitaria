@@ -399,7 +399,7 @@ export function EditorGrade({ disciplinas, horarios, onUpdate, user }: Props) {
                                 </span>
                               )}
                               <button
-                                className="absolute top-0.5 right-0.5 opacity-0 group-hover/bloco:opacity-100 transition-opacity bg-destructive/80 hover:bg-destructive text-white rounded p-0.5"
+                                className="absolute top-0.5 right-0.5 bg-destructive/80 hover:bg-destructive text-white rounded p-0.5 transition-opacity sm:opacity-0 sm:group-hover/bloco:opacity-100"
                                 onClick={() => handleRemoverHorario(horario.id)}
                                 title="Remover"
                               >

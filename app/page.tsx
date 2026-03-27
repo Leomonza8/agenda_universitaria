@@ -262,7 +262,6 @@ export default function Home() {
                       <GradeHorarios
                         horarios={horarios}
                         onSelectDisciplina={setDisciplinaSelecionada}
-                        onUpdate={fetchData}
                       />
                     </CardContent>
                   </Card>
