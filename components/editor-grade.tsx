@@ -155,11 +155,12 @@ export function EditorGrade({ disciplinas, horarios, onUpdate, user }: Props) {
         const g = parseInt(cor.slice(3, 5), 16)
         const b = parseInt(cor.slice(5, 7), 16)
         
-        // Fundo colorido claro
-        pdf.setFillColor(r, g, b)
-        pdf.setGState(new jsPDF.GState({ opacity: 0.2 }))
+        // Fundo colorido claro (misturar com branco para simular 20% de opacidade)
+        const rClaro = Math.round(r + (255 - r) * 0.8)
+        const gClaro = Math.round(g + (255 - g) * 0.8)
+        const bClaro = Math.round(b + (255 - b) * 0.8)
+        pdf.setFillColor(rClaro, gClaro, bClaro)
         pdf.rect(x + 1, y + 0.5, colWidth - 2, blocoHeight - 1, 'F')
-        pdf.setGState(new jsPDF.GState({ opacity: 1 }))
         
         // Borda esquerda colorida
         pdf.setFillColor(r, g, b)
