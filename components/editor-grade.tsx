@@ -47,39 +47,67 @@ export function EditorGrade({ disciplinas, horarios, onUpdate, user }: Props) {
   const gradeRef = useRef<HTMLDivElement>(null)
 
   const handleExportarPDF = async () => {
-    if (!gradeRef.current) return
+    console.log('[v0] Iniciando exportacao PDF')
+    console.log('[v0] gradeRef.current:', gradeRef.current)
+    
+    if (!gradeRef.current) {
+      console.log('[v0] Ref nao encontrada, abortando')
+      setExportando(false)
+      return
+    }
+    
     setExportando(true)
+    
     try {
-      const html2canvas = (await import('html2canvas')).default
-      const jsPDF = (await import('jspdf')).default
+      console.log('[v0] Importando bibliotecas...')
+      const html2canvasModule = await import('html2canvas')
+      const jspdfModule = await import('jspdf')
+      
+      const html2canvas = html2canvasModule.default
+      const jsPDF = jspdfModule.default
+      
+      console.log('[v0] Bibliotecas carregadas, gerando canvas...')
 
-      const canvas = await html2canvas(gradeRef.current, {
+      const element = gradeRef.current
+      const canvas = await html2canvas(element, {
         scale: 2,
         useCORS: true,
         backgroundColor: '#ffffff',
-        logging: false,
+        logging: true,
+        allowTaint: true,
       })
 
-      const imgWidth = 297 // A4 landscape width mm
+      console.log('[v0] Canvas gerado:', canvas.width, 'x', canvas.height)
+
+      const imgData = canvas.toDataURL('image/png')
+      const imgWidth = 280
       const imgHeight = (canvas.height * imgWidth) / canvas.width
+      
+      console.log('[v0] Criando PDF...')
       const pdf = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' })
 
       pdf.setFontSize(14)
       pdf.setTextColor(30, 30, 30)
-      pdf.text('Grade de Horarios', 14, 12)
+      pdf.text('Grade de Horarios', 10, 12)
       pdf.setFontSize(9)
       pdf.setTextColor(120, 120, 120)
-      pdf.text(`Exportado em ${new Date().toLocaleDateString('pt-BR')}`, 14, 18)
+      pdf.text(`Exportado em ${new Date().toLocaleDateString('pt-BR')}`, 10, 18)
 
       const marginTop = 24
-      const maxHeight = 210 - marginTop - 6 // A4 landscape height
+      const maxHeight = 185
       const finalHeight = Math.min(imgHeight, maxHeight)
 
-      pdf.addImage(canvas.toDataURL('image/png'), 'PNG', 0, marginTop, imgWidth, finalHeight)
+      pdf.addImage(imgData, 'PNG', 8, marginTop, imgWidth, finalHeight)
+      
+      console.log('[v0] Salvando PDF...')
       pdf.save('grade-horarios.pdf')
+      console.log('[v0] PDF salvo com sucesso!')
+      
     } catch (err) {
       console.error('[v0] Erro ao exportar PDF:', err)
+      alert('Erro ao exportar PDF. Verifique o console para mais detalhes.')
     }
+    
     setExportando(false)
   }
 
