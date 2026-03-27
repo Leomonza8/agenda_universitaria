@@ -44,68 +44,124 @@ export function EditorGrade({ disciplinas, horarios, onUpdate, user }: Props) {
   const [horaFim, setHoraFim] = useState('')
   const [expandNoturno, setExpandNoturno] = useState(false)
   const dragRef = useRef<string | null>(null)
-  const gradeRef = useRef<HTMLDivElement>(null)
 
   const handleExportarPDF = async () => {
-    console.log('[v0] Iniciando exportacao PDF')
-    console.log('[v0] gradeRef.current:', gradeRef.current)
-    
-    if (!gradeRef.current) {
-      console.log('[v0] Ref nao encontrada, abortando')
-      setExportando(false)
-      return
-    }
-    
     setExportando(true)
     
     try {
-      console.log('[v0] Importando bibliotecas...')
-      const html2canvasModule = await import('html2canvas')
       const jspdfModule = await import('jspdf')
-      
-      const html2canvas = html2canvasModule.default
       const jsPDF = jspdfModule.default
       
-      console.log('[v0] Bibliotecas carregadas, gerando canvas...')
-
-      const element = gradeRef.current
-      const canvas = await html2canvas(element, {
-        scale: 2,
-        useCORS: true,
-        backgroundColor: '#ffffff',
-        logging: true,
-        allowTaint: true,
-      })
-
-      console.log('[v0] Canvas gerado:', canvas.width, 'x', canvas.height)
-
-      const imgData = canvas.toDataURL('image/png')
-      const imgWidth = 280
-      const imgHeight = (canvas.height * imgWidth) / canvas.width
-      
-      console.log('[v0] Criando PDF...')
       const pdf = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' })
-
-      pdf.setFontSize(14)
+      const pageWidth = 297
+      const pageHeight = 210
+      
+      // Titulo
+      pdf.setFontSize(16)
       pdf.setTextColor(30, 30, 30)
-      pdf.text('Grade de Horarios', 10, 12)
+      pdf.text('Grade de Horarios', 14, 15)
       pdf.setFontSize(9)
       pdf.setTextColor(120, 120, 120)
-      pdf.text(`Exportado em ${new Date().toLocaleDateString('pt-BR')}`, 10, 18)
-
-      const marginTop = 24
-      const maxHeight = 185
-      const finalHeight = Math.min(imgHeight, maxHeight)
-
-      pdf.addImage(imgData, 'PNG', 8, marginTop, imgWidth, finalHeight)
+      pdf.text(`Exportado em ${new Date().toLocaleDateString('pt-BR')}`, 14, 21)
       
-      console.log('[v0] Salvando PDF...')
+      // Config da tabela
+      const startY = 28
+      const startX = 14
+      const colWidth = 52
+      const rowHeight = 8
+      const horaColWidth = 16
+      const horas = expandNoturno ? TODAS_HORAS : HORAS_DIA
+      
+      // Header - dias
+      pdf.setFillColor(245, 245, 245)
+      pdf.rect(startX, startY, horaColWidth + (colWidth * 5), rowHeight, 'F')
+      pdf.setFontSize(9)
+      pdf.setTextColor(80, 80, 80)
+      pdf.text('Hora', startX + 2, startY + 5.5)
+      DIAS.forEach((dia, i) => {
+        pdf.text(dia, startX + horaColWidth + (i * colWidth) + colWidth / 2, startY + 5.5, { align: 'center' })
+      })
+      
+      // Linhas de horario
+      horas.forEach((hora, rowIdx) => {
+        const y = startY + rowHeight + (rowIdx * rowHeight)
+        
+        // Fundo alternado
+        if (rowIdx % 2 === 0) {
+          pdf.setFillColor(252, 252, 252)
+          pdf.rect(startX, y, horaColWidth + (colWidth * 5), rowHeight, 'F')
+        }
+        
+        // Hora
+        pdf.setFontSize(8)
+        pdf.setTextColor(120, 120, 120)
+        pdf.text(hora, startX + 2, y + 5.5)
+        
+        // Celulas dos dias
+        DIAS_NUM.forEach((dia, colIdx) => {
+          const horario = horarios.find(h => h.dia_semana === dia && h.hora_inicio === hora)
+          const disc = horario ? disciplinas.find(d => d.id === horario.disciplina_id) : null
+          
+          if (disc && horario) {
+            const x = startX + horaColWidth + (colIdx * colWidth)
+            
+            // Fundo colorido
+            const cor = disc.cor || '#3b82f6'
+            const r = parseInt(cor.slice(1, 3), 16)
+            const g = parseInt(cor.slice(3, 5), 16)
+            const b = parseInt(cor.slice(5, 7), 16)
+            
+            // Calcular altura do bloco
+            const horaFimIdx = horario.hora_fim ? horas.indexOf(horario.hora_fim) : rowIdx + 1
+            const blocoHeight = Math.max(1, horaFimIdx - rowIdx) * rowHeight
+            
+            pdf.setFillColor(r, g, b, 0.15)
+            pdf.rect(x + 1, y + 0.5, colWidth - 2, blocoHeight - 1, 'F')
+            
+            // Borda esquerda colorida
+            pdf.setFillColor(r, g, b)
+            pdf.rect(x + 1, y + 0.5, 1.5, blocoHeight - 1, 'F')
+            
+            // Texto
+            pdf.setFontSize(7)
+            pdf.setTextColor(r, g, b)
+            const textoY = y + (blocoHeight / 2) + 1
+            if (disc.nome) {
+              pdf.setFontSize(6)
+              pdf.text(disc.nome.substring(0, 20), x + colWidth / 2, textoY - 2, { align: 'center' })
+            }
+            pdf.setFontSize(8)
+            pdf.text(disc.codigo || '', x + colWidth / 2, textoY + 2, { align: 'center' })
+          }
+        })
+      })
+      
+      // Bordas da tabela
+      pdf.setDrawColor(220, 220, 220)
+      pdf.setLineWidth(0.2)
+      
+      // Borda externa
+      const tableHeight = rowHeight + (horas.length * rowHeight)
+      pdf.rect(startX, startY, horaColWidth + (colWidth * 5), tableHeight)
+      
+      // Linhas horizontais
+      for (let i = 0; i <= horas.length; i++) {
+        const y = startY + rowHeight + (i * rowHeight)
+        pdf.line(startX, y, startX + horaColWidth + (colWidth * 5), y)
+      }
+      
+      // Linhas verticais
+      pdf.line(startX + horaColWidth, startY, startX + horaColWidth, startY + tableHeight)
+      for (let i = 1; i <= 5; i++) {
+        const x = startX + horaColWidth + (i * colWidth)
+        pdf.line(x, startY, x, startY + tableHeight)
+      }
+      
       pdf.save('grade-horarios.pdf')
-      console.log('[v0] PDF salvo com sucesso!')
       
     } catch (err) {
       console.error('[v0] Erro ao exportar PDF:', err)
-      alert('Erro ao exportar PDF. Verifique o console para mais detalhes.')
+      alert('Erro ao exportar PDF')
     }
     
     setExportando(false)
@@ -242,7 +298,7 @@ export function EditorGrade({ disciplinas, horarios, onUpdate, user }: Props) {
             {exportando ? 'Exportando...' : 'Exportar PDF'}
           </Button>
         </div>
-        <div ref={gradeRef} className="overflow-x-auto">
+        <div className="overflow-x-auto">
           <table className="border-collapse w-full" style={{ minWidth: 380 }}>
             <thead>
               <tr className="bg-muted/60">
